@@ -1,0 +1,427 @@
+/**
+ * Nuora Custom Cart - Interactive Spec Site
+ * Handles: cart demo interactivity, checklist, code copy, nav highlighting
+ */
+
+(function () {
+  'use strict';
+
+  // ==================== CART DEMO STATE ====================
+  const PRODUCTS = {
+    gummies: {
+      name: 'Feminine Balance Gummies',
+      variant: '1 Pack',
+      plan: 'Subscribe & Save - Monthly',
+      savings: 'Saves 15% every order',
+      price: 34.99,
+      compare: 40.99,
+      emoji: '\uD83C\uDF4D',
+      type: 'yellow',
+    },
+    gummies3: {
+      name: 'Feminine Balance Gummies',
+      variant: '3 Pack',
+      plan: 'Subscribe & Save - Quarterly',
+      savings: 'Saves 42% every order',
+      price: 58.99,
+      compare: 101.97,
+      emoji: '\uD83C\uDF4D',
+      type: 'yellow',
+    },
+    capsules: {
+      name: 'Gut Ritual Capsules',
+      variant: '1 Bottle',
+      plan: null,
+      savings: null,
+      price: 29.99,
+      compare: 51.00,
+      emoji: '\uD83D\uDC8A',
+      type: 'rose',
+    },
+  };
+
+  const FREE_SHIPPING_THRESHOLD = 100;
+
+  let cart = [
+    { id: 'gummies', qty: 1 },
+  ];
+
+  // ==================== RENDER CART ====================
+  function renderCart() {
+    const cartItemsEl = document.getElementById('cartItems');
+    const cartCountEl = document.getElementById('cartCount');
+    const subtotalEl = document.getElementById('subtotal');
+    const totalPriceEl = document.getElementById('totalPrice');
+    const checkoutTotalEl = document.getElementById('checkoutTotal');
+    const savingsEl = document.getElementById('savingsText');
+    const shippingTextEl = document.getElementById('shippingText');
+    const shippingFillEl = document.getElementById('shippingFill');
+    const shippingCostEl = document.getElementById('shippingCost');
+    const crossSellEl = document.getElementById('crossSell');
+    const bundleUpsellEl = document.getElementById('bundleUpsell');
+
+    if (!cartItemsEl) return;
+
+    // Calculate totals
+    let subtotal = 0;
+    let totalCompare = 0;
+    let totalQty = 0;
+
+    cart.forEach(item => {
+      const product = PRODUCTS[item.id];
+      subtotal += product.price * item.qty;
+      totalCompare += product.compare * item.qty;
+      totalQty += item.qty;
+    });
+
+    const savings = totalCompare - subtotal;
+
+    // Cart count
+    cartCountEl.textContent = '(' + totalQty + ')';
+
+    // Subtotal / total
+    subtotalEl.textContent = '$' + subtotal.toFixed(2);
+    totalPriceEl.textContent = '$' + subtotal.toFixed(2);
+    checkoutTotalEl.textContent = '$' + subtotal.toFixed(2);
+
+    // Savings
+    if (savings > 0) {
+      savingsEl.textContent = 'You save $' + savings.toFixed(2) + ' on this order';
+      savingsEl.style.display = '';
+    } else {
+      savingsEl.style.display = 'none';
+    }
+
+    // Free shipping bar
+    const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
+    if (remaining <= 0) {
+      shippingTextEl.textContent = "\u2705 You've unlocked FREE shipping!";
+      shippingTextEl.classList.add('qualified');
+      shippingFillEl.style.width = '100%';
+      shippingFillEl.classList.add('qualified');
+      shippingCostEl.textContent = 'FREE';
+    } else {
+      shippingTextEl.textContent = '$' + remaining.toFixed(2) + ' away from FREE shipping!';
+      shippingTextEl.classList.remove('qualified');
+      const pct = Math.min(Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100), 100);
+      shippingFillEl.style.width = pct + '%';
+      shippingFillEl.classList.remove('qualified');
+      shippingCostEl.textContent = 'Calculated at checkout';
+    }
+
+    // Cart items
+    let itemsHTML = '';
+    cart.forEach(item => {
+      const product = PRODUCTS[item.id];
+      itemsHTML += '<div class="cart-item">';
+      itemsHTML += '<div class="cart-item-img ' + product.type + '">' + product.emoji + '</div>';
+      itemsHTML += '<div class="cart-item-details">';
+      itemsHTML += '<div class="cart-item-name">' + product.name + '</div>';
+      itemsHTML += '<div class="cart-item-variant">Variant: ' + product.variant + '</div>';
+      if (product.plan) {
+        itemsHTML += '<div class="cart-item-plan">' + product.plan + '</div>';
+      }
+      if (product.savings) {
+        itemsHTML += '<div class="cart-item-savings">' + product.savings + '</div>';
+      }
+      itemsHTML += '<div class="cart-item-bottom">';
+      itemsHTML += '<div style="display:flex;align-items:center;gap:8px;">';
+      itemsHTML += '<div class="qty-control">';
+      itemsHTML += '<button class="qty-btn" data-action="decrease" data-id="' + item.id + '">-</button>';
+      itemsHTML += '<span class="qty-value">' + item.qty + '</span>';
+      itemsHTML += '<button class="qty-btn" data-action="increase" data-id="' + item.id + '">+</button>';
+      itemsHTML += '</div>';
+      itemsHTML += '<button class="remove-btn" data-action="remove" data-id="' + item.id + '">Remove</button>';
+      itemsHTML += '</div>';
+      itemsHTML += '<div class="cart-item-price">';
+      itemsHTML += '<div class="price-current">$' + (product.price * item.qty).toFixed(2) + '</div>';
+      if (product.compare > product.price) {
+        itemsHTML += '<div class="price-compare">$' + (product.compare * item.qty).toFixed(2) + '</div>';
+      }
+      itemsHTML += '</div>';
+      itemsHTML += '</div>'; // cart-item-bottom
+      itemsHTML += '</div>'; // cart-item-details
+      itemsHTML += '</div>'; // cart-item
+    });
+
+    cartItemsEl.innerHTML = itemsHTML;
+
+    // Cross-sell visibility
+    const hasGummies = cart.some(i => i.id === 'gummies' || i.id === 'gummies3');
+    const hasCapsules = cart.some(i => i.id === 'capsules');
+
+    if (hasGummies && !hasCapsules) {
+      crossSellEl.style.display = '';
+    } else if (hasCapsules && !hasGummies) {
+      // Show gummies cross-sell (swap content)
+      crossSellEl.style.display = '';
+      const nameEl = crossSellEl.querySelector('.cross-sell-name');
+      const priceEl = crossSellEl.querySelector('.cross-sell-price');
+      const imgEl = crossSellEl.querySelector('.cross-sell-img');
+      if (nameEl) nameEl.textContent = 'Feminine Balance Gummies';
+      if (priceEl) priceEl.innerHTML = '$34.99 <span class="strike">$40.99</span>';
+      if (imgEl) imgEl.textContent = '\uD83C\uDF4D';
+    } else {
+      crossSellEl.style.display = 'none';
+    }
+
+    // Bundle upsell visibility (show if 1-pack gummies in cart)
+    const has1Pack = cart.some(i => i.id === 'gummies');
+    if (has1Pack) {
+      bundleUpsellEl.style.display = '';
+    } else {
+      bundleUpsellEl.style.display = 'none';
+    }
+
+    // Empty cart state
+    if (cart.length === 0) {
+      cartItemsEl.innerHTML = '<div style="padding:40px 20px;text-align:center;"><p style="font-size:14px;color:var(--brown-800);margin-bottom:12px;">Your cart is empty</p><p style="font-size:13px;color:var(--brown-800);opacity:0.6;">Add some products to get started</p></div>';
+      crossSellEl.style.display = 'none';
+      bundleUpsellEl.style.display = 'none';
+    }
+
+    // Bind item action buttons
+    cartItemsEl.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', handleCartAction);
+    });
+  }
+
+  // ==================== CART ACTIONS ====================
+  function handleCartAction(e) {
+    const btn = e.currentTarget;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+
+    const itemIndex = cart.findIndex(i => i.id === id);
+    if (itemIndex === -1) return;
+
+    switch (action) {
+      case 'increase':
+        cart[itemIndex].qty += 1;
+        break;
+      case 'decrease':
+        if (cart[itemIndex].qty > 1) {
+          cart[itemIndex].qty -= 1;
+        }
+        break;
+      case 'remove':
+        cart.splice(itemIndex, 1);
+        break;
+    }
+
+    renderCart();
+  }
+
+  // ==================== CROSS-SELL ADD ====================
+  function initCrossSell() {
+    const addBtn = document.getElementById('addCrossSell');
+    if (!addBtn) return;
+
+    addBtn.addEventListener('click', () => {
+      const hasGummies = cart.some(i => i.id === 'gummies' || i.id === 'gummies3');
+      const hasCapsules = cart.some(i => i.id === 'capsules');
+
+      if (hasGummies && !hasCapsules) {
+        cart.push({ id: 'capsules', qty: 1 });
+      } else if (hasCapsules && !hasGummies) {
+        cart.push({ id: 'gummies', qty: 1 });
+      }
+
+      renderCart();
+    });
+  }
+
+  // ==================== BUNDLE UPGRADE ====================
+  function initBundleUpgrade() {
+    const upgradeBtn = document.getElementById('upgradeBundle');
+    if (!upgradeBtn) return;
+
+    upgradeBtn.addEventListener('click', () => {
+      const idx = cart.findIndex(i => i.id === 'gummies');
+      if (idx !== -1) {
+        cart[idx] = { id: 'gummies3', qty: 1 };
+        renderCart();
+      }
+    });
+  }
+
+  // ==================== VIEWPORT TOGGLE ====================
+  function initViewportToggle() {
+    const toggles = document.querySelectorAll('.demo-toggle');
+    const viewport = document.getElementById('demoViewport');
+    if (!viewport || !toggles.length) return;
+
+    toggles.forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggles.forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        const mode = btn.dataset.viewport;
+        viewport.classList.remove('mobile', 'desktop');
+        viewport.classList.add(mode);
+      });
+    });
+  }
+
+  // ==================== CHECKLIST ====================
+  function initChecklist() {
+    const items = document.querySelectorAll('.checklist-item');
+    const counter = document.getElementById('checklistCounter');
+    if (!items.length) return;
+
+    // Load state from localStorage
+    const saved = JSON.parse(localStorage.getItem('nuora-cart-checklist') || '{}');
+
+    items.forEach(item => {
+      const key = item.dataset.check;
+      if (saved[key]) {
+        item.classList.add('checked');
+      }
+
+      item.addEventListener('click', () => {
+        item.classList.toggle('checked');
+
+        // Save state
+        const state = {};
+        items.forEach(i => {
+          if (i.classList.contains('checked')) {
+            state[i.dataset.check] = true;
+          }
+        });
+        localStorage.setItem('nuora-cart-checklist', JSON.stringify(state));
+
+        updateChecklistCounter();
+      });
+    });
+
+    function updateChecklistCounter() {
+      const checked = document.querySelectorAll('.checklist-item.checked').length;
+      counter.textContent = checked + ' of ' + items.length + ' completed';
+    }
+
+    updateChecklistCounter();
+  }
+
+  // ==================== CODE COPY ====================
+  function initCodeCopy() {
+    document.querySelectorAll('.code-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.dataset.copy;
+        const codeEl = document.getElementById(targetId);
+        if (!codeEl) return;
+
+        navigator.clipboard.writeText(codeEl.textContent).then(() => {
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => {
+            btn.textContent = original;
+          }, 1500);
+        }).catch(() => {
+          // Fallback for older browsers
+          const range = document.createRange();
+          range.selectNodeContents(codeEl);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          document.execCommand('copy');
+          selection.removeAllRanges();
+
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => {
+            btn.textContent = original;
+          }, 1500);
+        });
+      });
+    });
+  }
+
+  // ==================== SECTION NAV HIGHLIGHT ====================
+  function initNavHighlight() {
+    const navLinks = document.querySelectorAll('.section-nav a');
+    const sections = [];
+
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        const section = document.getElementById(href.slice(1));
+        if (section) {
+          sections.push({ el: section, link: link });
+        }
+      }
+    });
+
+    if (!sections.length) return;
+
+    function onScroll() {
+      const scrollPos = window.scrollY + 160;
+
+      let activeSection = sections[0];
+      for (const s of sections) {
+        if (s.el.offsetTop <= scrollPos) {
+          activeSection = s;
+        }
+      }
+
+      navLinks.forEach(l => l.classList.remove('active'));
+      if (activeSection) {
+        activeSection.link.classList.add('active');
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  // ==================== MOBILE MENU ====================
+  function initMobileMenu() {
+    const btn = document.getElementById('mobileMenuBtn');
+    const nav = document.getElementById('headerNav');
+    if (!btn || !nav) return;
+
+    btn.addEventListener('click', () => {
+      nav.classList.toggle('open');
+    });
+
+    // Close on nav link click
+    nav.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        nav.classList.remove('open');
+      });
+    });
+  }
+
+  // ==================== CHECKOUT BUTTON ====================
+  function initCheckoutBtn() {
+    const btn = document.getElementById('checkoutBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+      btn.textContent = 'Redirecting to checkout...';
+      btn.style.background = 'var(--positive)';
+      setTimeout(() => {
+        btn.innerHTML = 'Checkout - <span id="checkoutTotal">$' + cart.reduce((sum, i) => sum + PRODUCTS[i.id].price * i.qty, 0).toFixed(2) + '</span>';
+        btn.style.background = '';
+      }, 1500);
+    });
+  }
+
+  // ==================== INIT ====================
+  function init() {
+    renderCart();
+    initCrossSell();
+    initBundleUpgrade();
+    initViewportToggle();
+    initChecklist();
+    initCodeCopy();
+    initNavHighlight();
+    initMobileMenu();
+    initCheckoutBtn();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuora Custom Cart - Technical Spec</title>
+  <meta name="description" content="Technical implementation spec for Nuora's custom cart drawer and /cart page. Built for the dev team.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='1' fill='%23FAC515'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='18' font-weight='700' fill='%23542C0D'>N</text></svg>">
+</head>
+<body>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-logo">N</div>
+        <div>
+          <div class="header-title">Nuora Cart Spec</div>
+        </div>
+        <span class="header-badge">Technical Brief</span>
+      </div>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+        </svg>
+      </button>
+      <nav class="header-nav" id="headerNav">
+        <a href="#overview">Overview</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#cart-demo">Cart Demo</a>
+        <a href="#features">Features</a>
+        <a href="#skio">SKIO</a>
+        <a href="#checklist">Checklist</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ==================== HERO ==================== -->
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Custom Cart Drawer + /cart Page</h1>
+      <p>Sitewide cart experience with cross-sells, bundle upsells, free shipping bar, and full SKIO subscription support. Works on theme pages and Replo pages.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><span class="dot"></span> March 2026</div>
+        <div class="hero-meta-item"><span class="dot"></span> For Tomide (Dev)</div>
+        <div class="hero-meta-item"><span class="dot"></span> From Hardik (CRO)</div>
+        <div class="hero-meta-item"><span class="dot"></span> Vanilla JS</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== SECTION NAV ==================== -->
+  <nav class="section-nav">
+    <div class="section-nav-inner">
+      <a href="#overview">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#cart-demo">Cart Demo</a>
+      <a href="#features">Features</a>
+      <a href="#products">Products</a>
+      <a href="#skio">SKIO</a>
+      <a href="#gotchas">Gotchas</a>
+      <a href="#files">Files</a>
+      <a href="#checklist">Checklist</a>
+      <a href="#questions">Questions</a>
+    </div>
+  </nav>
+
+  <!-- ==================== MAIN ==================== -->
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <section class="section" id="overview">
+      <div class="section-header">
+        <div class="section-label">Section 01</div>
+        <h2 class="section-title">What We're Building</h2>
+        <p class="section-desc">Two interconnected components that share the same JS module and data layer. Both must work on theme pages, Replo pages, and any page where a product gets added to cart.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-subtitle">Component A</div>
+          <div class="card-title">Cart Drawer</div>
+          <p class="card-text">Slide-out panel triggered by cart icon click. Slides in from the right. Contains line items, cross-sells, free shipping bar, bundle upsells, and checkout CTA. 420px on desktop, 100% on mobile.</p>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Component B</div>
+          <div class="card-title">Custom /cart Page</div>
+          <p class="card-text">Full-page cart at <code>/pages/cart</code>. Default <code>/cart</code> redirects here. Same features as drawer but expanded with room for cross-sell cards, trust badges, and subscription details.</p>
+        </div>
+      </div>
+
+      <div class="grid-3 mt-24">
+        <div class="card">
+          <div class="card-subtitle">Goal</div>
+          <div class="card-title">Increase AOV</div>
+          <p class="card-text">Upsells and cross-sells directly in the cart experience. Every add-to-cart is an AOV opportunity.</p>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Coverage</div>
+          <div class="card-title">Sitewide</div>
+          <p class="card-text">Theme pages (homepage, collections, blog) + Replo pages (PDPs, presell pages, listicles). One script covers everything.</p>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Stack</div>
+          <div class="card-title">Vanilla JS</div>
+          <p class="card-text">Single JS module, no framework deps. Uses Shopify Cart AJAX API. Loaded via theme.liquid before &lt;/body&gt;.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section class="section" id="architecture">
+      <div class="section-header">
+        <div class="section-label">Section 02</div>
+        <h2 class="section-title">Architecture</h2>
+        <p class="section-desc">Single vanilla JS module (nuora-cart.js) that manages cart state, renders the drawer, and powers the /cart page.</p>
+      </div>
+
+      <div class="arch-diagram">
+        <div class="arch-flow">
+          <div class="arch-box" style="width: 100%; max-width: 500px;">
+            <div class="arch-box-title">nuora-cart.js</div>
+            <div class="arch-box-desc">Single vanilla JS module - source of truth</div>
+          </div>
+
+          <div class="arch-arrow">&#8595;</div>
+
+          <div class="arch-flow-row">
+            <div class="arch-box" style="flex: 1; min-width: 150px;">
+              <div class="arch-box-title">Cart State Manager</div>
+              <div class="arch-box-desc">Central state, pub/sub listeners</div>
+            </div>
+            <div class="arch-box" style="flex: 1; min-width: 150px;">
+              <div class="arch-box-title">Cart Drawer</div>
+              <div class="arch-box-desc">Slide-out panel component</div>
+            </div>
+            <div class="arch-box" style="flex: 1; min-width: 150px;">
+              <div class="arch-box-title">/cart Page</div>
+              <div class="arch-box-desc">Full page cart component</div>
+            </div>
+          </div>
+
+          <div class="arch-arrow">&#8595;</div>
+
+          <div class="arch-center-box">
+            <div class="arch-box-title">Shopify Cart AJAX API</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Endpoints -->
+      <h3 class="card-title mt-24 mb-16">API Endpoints</h3>
+      <div style="overflow-x: auto;">
+        <table class="api-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="method-badge method-get">GET</span></td>
+              <td><span class="endpoint-path">/cart.js</span></td>
+              <td>Fetch current cart state</td>
+            </tr>
+            <tr>
+              <td><span class="method-badge method-post">POST</span></td>
+              <td><span class="endpoint-path">/cart/add.js</span></td>
+              <td>Add items with selling_plan</td>
+            </tr>
+            <tr>
+              <td><span class="method-badge method-post">POST</span></td>
+              <td><span class="endpoint-path">/cart/change.js</span></td>
+              <td>Update qty, selling_plan</td>
+            </tr>
+            <tr>
+              <td><span class="method-badge method-post">POST</span></td>
+              <td><span class="endpoint-path">/cart/update.js</span></td>
+              <td>Bulk updates, cart attributes</td>
+            </tr>
+            <tr>
+              <td><span class="method-badge method-post">POST</span></td>
+              <td><span class="endpoint-path">/cart/clear.js</span></td>
+              <td>Clear entire cart</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Injection Strategy -->
+      <h3 class="card-title mt-24 mb-8">Injection Strategy</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-subtitle">Theme Pages</div>
+          <p class="card-text">Load <code>nuora-cart.js</code> via <code>theme.liquid</code> before <code>&lt;/body&gt;</code>. Script intercepts all add-to-cart form submissions, injects drawer HTML into DOM, listens for <code>cart:open</code> event, and hijacks cart icon clicks.</p>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Replo Pages</div>
+          <p class="card-text">Replo pages load inside theme layout, so <code>theme.liquid</code> injection covers them automatically. Replo's add-to-cart must fire a <code>cart:refresh</code> custom event that the cart module listens to.</p>
+        </div>
+      </div>
+
+      <div class="code-block mt-16">
+        <div class="code-block-header">
+          <span class="code-block-label">Event Bridge (Theme + Replo)</span>
+          <button class="code-copy-btn" data-copy="event-bridge">Copy</button>
+        </div>
+        <pre id="event-bridge">// After any add-to-cart action (theme or Replo), fire this:
+document.dispatchEvent(new CustomEvent('cart:refresh'));
+
+// The cart module listens:
+document.addEventListener('cart:refresh', async () => {
+  const cart = await fetch(window.Shopify.routes.root + 'cart.js')
+    .then(r => r.json());
+  updateCartState(cart);
+  renderCartDrawer(cart);
+  openDrawer();
+});</pre>
+      </div>
+    </section>
+
+    <!-- INTERACTIVE CART DEMO -->
+    <section class="section" id="cart-demo">
+      <div class="section-header">
+        <div class="section-label">Section 03</div>
+        <h2 class="section-title">Interactive Cart Demo</h2>
+        <p class="section-desc">Live preview of the cart drawer. Toggle between mobile and desktop viewports. Click buttons to interact - quantities, cross-sells, and bundle upgrades all work.</p>
+      </div>
+
+      <div class="demo-container">
+        <div class="demo-toolbar">
+          <span class="demo-toolbar-label">Cart Drawer Preview</span>
+          <div class="demo-toggle-group">
+            <button class="demo-toggle active" data-viewport="mobile">Mobile</button>
+            <button class="demo-toggle" data-viewport="desktop">Desktop</button>
+          </div>
+        </div>
+
+        <div class="demo-viewport mobile" id="demoViewport">
+          <div class="cart-drawer-demo" id="cartDrawer">
+            <!-- Drawer Header -->
+            <div class="drawer-header">
+              <div class="drawer-header-title">YOUR CART <span id="cartCount">(1)</span></div>
+              <button class="drawer-close">&times;</button>
+            </div>
+
+            <!-- Shipping Bar -->
+            <div class="shipping-bar">
+              <div class="shipping-bar-text" id="shippingText">$1.00 away from FREE shipping!</div>
+              <div class="shipping-bar-track">
+                <div class="shipping-bar-fill" id="shippingFill" style="width: 99%;"></div>
+              </div>
+            </div>
+
+            <!-- Cart Items -->
+            <div class="cart-items" id="cartItems">
+              <!-- Items injected by JS -->
+            </div>
+
+            <!-- Cross-sell -->
+            <div class="cross-sell" id="crossSell">
+              <div class="cross-sell-header">Complete Your Routine</div>
+              <div class="cross-sell-card">
+                <div class="cross-sell-img">&#x1F48A;</div>
+                <div class="cross-sell-info">
+                  <div class="cross-sell-name">Gut Ritual Capsules</div>
+                  <div class="cross-sell-price">$29.99 <span class="strike">$51.00</span></div>
+                </div>
+                <button class="cross-sell-add" id="addCrossSell">+ Add</button>
+              </div>
+            </div>
+
+            <!-- Bundle Upsell -->
+            <div class="bundle-upsell" id="bundleUpsell">
+              <div class="bundle-upsell-header">Upgrade & Save</div>
+              <div class="bundle-card">
+                <div>
+                  <div class="bundle-info-title">Switch to 3-Pack: Save 42%</div>
+                  <div class="bundle-info-sub">$58.99/quarter vs $122.97</div>
+                </div>
+                <button class="bundle-upgrade-btn" id="upgradeBundle">Upgrade</button>
+              </div>
+            </div>
+
+            <!-- Cart Footer -->
+            <div class="cart-footer" id="cartFooter">
+              <div class="cart-summary-row">
+                <span>Subtotal</span>
+                <span id="subtotal">$34.99</span>
+              </div>
+              <div class="cart-summary-row">
+                <span>Shipping</span>
+                <span id="shippingCost">FREE</span>
+              </div>
+              <div class="cart-summary-row total">
+                <span>Total</span>
+                <span id="totalPrice">$34.99</span>
+              </div>
+              <div class="cart-savings" id="savingsText">You save $23.00 on this order</div>
+              <button class="checkout-btn" id="checkoutBtn">Checkout - <span id="checkoutTotal">$34.99</span></button>
+              <div class="cart-trust">
+                <span>&#x1F512; Secure checkout</span>
+                <span>30-day guarantee</span>
+                <span>Cancel anytime</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+      <div class="section-header">
+        <div class="section-label">Section 04</div>
+        <h2 class="section-title">AOV Features</h2>
+        <p class="section-desc">Four AOV tactics built into the cart experience. Each one has its own logic and display rules.</p>
+      </div>
+
+      <!-- Free Shipping Bar -->
+      <div class="card mb-16">
+        <div class="card-subtitle">Feature 01</div>
+        <div class="card-title">Free Shipping Progress Bar</div>
+        <p class="card-text mb-16">Threshold-based progress bar at the top of the cart. Animates on cart updates. Changes to green with checkmark when qualified.</p>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-label">Shipping Logic</span>
+            <button class="code-copy-btn" data-copy="shipping-code">Copy</button>
+          </div>
+          <pre id="shipping-code">const FREE_SHIPPING_THRESHOLD = 10000; // $100.00 in cents
+
+function getShippingProgress(cartTotal) {
+  const remaining = FREE_SHIPPING_THRESHOLD - cartTotal;
+
+  if (remaining <= 0) {
+    return {
+      qualified: true,
+      percentage: 100,
+      message: "You've unlocked FREE shipping!",
+    };
+  }
+
+  return {
+    qualified: false,
+    percentage: Math.round((cartTotal / FREE_SHIPPING_THRESHOLD) * 100),
+    message: `$${(remaining / 100).toFixed(2)} away from FREE shipping!`,
+  };
+}</pre>
+        </div>
+      </div>
+
+      <!-- Cross-sell -->
+      <div class="card mb-16">
+        <div class="card-subtitle">Feature 02</div>
+        <div class="card-title">Cross-Sell (Complementary Product)</div>
+        <p class="card-text mb-16">If cart has gummies, offer capsules. If cart has capsules, offer gummies. Disappears if the offered product is already in cart.</p>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-label">Cross-Sell Map</span>
+            <button class="code-copy-btn" data-copy="cross-sell-code">Copy</button>
+          </div>
+          <pre id="cross-sell-code">const CROSS_SELL_MAP = {
+  gummies: {
+    triggerHandles: [
+      'feminine-balance-gummies-1',
+      'nuora-vaginal-probiotic-gummies',
+    ],
+    offer: {
+      handle: 'gut-ritual-capsules',
+      headline: 'Complete Your Routine',
+      subline: 'Support your gut health alongside vaginal balance',
+    }
+  },
+  capsules: {
+    triggerHandles: ['gut-ritual-capsules'],
+    offer: {
+      handle: 'feminine-balance-gummies-1',
+      headline: 'Complete Your Routine',
+      subline: 'Balance your vaginal pH with probiotic gummies',
+    }
+  }
+};</pre>
+        </div>
+      </div>
+
+      <!-- Bundle Upsell -->
+      <div class="card mb-16">
+        <div class="card-subtitle">Feature 03</div>
+        <div class="card-title">Bundle Upsell (Upgrade to Higher Pack)</div>
+        <p class="card-text mb-16">When a 1-bottle variant is in cart, prompt to upgrade to 3-pack. Preserves selling plan on upgrade. Removes old item, adds new variant.</p>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-label">Upgrade Action</span>
+            <button class="code-copy-btn" data-copy="bundle-code">Copy</button>
+          </div>
+          <pre id="bundle-code">async function upgradeToPack(currentItemKey, newVariantId, sellingPlanId) {
+  // Remove current 1-pack item
+  await fetch(window.Shopify.routes.root + 'cart/change.js', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: currentItemKey, quantity: 0 }),
+  });
+
+  // Add upgraded 3-pack variant
+  const addBody = { id: newVariantId, quantity: 1 };
+  if (sellingPlanId) addBody.selling_plan = sellingPlanId;
+
+  await fetch(window.Shopify.routes.root + 'cart/add.js', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: [addBody] }),
+  });
+
+  document.dispatchEvent(new CustomEvent('cart:refresh'));
+}</pre>
+        </div>
+      </div>
+
+      <!-- Quantity Upsell -->
+      <div class="card">
+        <div class="card-subtitle">Feature 04</div>
+        <div class="card-title">Quantity Upsell</div>
+        <p class="card-text">Two options under consideration:</p>
+        <div class="grid-2 mt-16">
+          <div class="card">
+            <div class="card-subtitle">Option A</div>
+            <p class="card-text">Increment qty normally and show tiered savings messaging ("Buy 2 more, save X%").</p>
+          </div>
+          <div class="card" style="border: 1px solid var(--positive); background: var(--positive-bg);">
+            <div class="card-subtitle" style="color: var(--positive);">Option B (Recommended)</div>
+            <p class="card-text">Hide qty adjuster entirely, only show bundle upgrade prompts. Prevents SKU mapping issues with SKIO/Ka-ching where qty 3 of a 1-bottle variant ships wrong.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="section" id="products">
+      <div class="section-header">
+        <div class="section-label">Section 05</div>
+        <h2 class="section-title">Product Catalog</h2>
+        <p class="section-desc">Products in the cross-sell engine. Pricing pulled from brand.py config.</p>
+      </div>
+
+      <div class="product-grid">
+        <div class="product-card yellow">
+          <div class="product-card-name">Nuora Vaginal Probiotic Gummies</div>
+          <div class="product-card-handle">Handle: feminine-balance-gummies-1</div>
+          <div class="product-card-stats">
+            <div class="product-stat"><strong>11,847</strong> reviews</div>
+            <div class="product-stat"><strong>4.57</strong> rating</div>
+            <div class="product-stat"><strong>65,212</strong> subscribers</div>
+            <div class="product-stat">Flavor: <strong>Pineapple</strong></div>
+          </div>
+        </div>
+        <div class="product-card rose">
+          <div class="product-card-name">Nuora Gut Ritual Capsules</div>
+          <div class="product-card-handle">Handle: gut-capsule</div>
+          <div class="product-card-stats">
+            <div class="product-stat"><strong>11,847</strong> reviews</div>
+            <div class="product-stat"><strong>4.57</strong> rating</div>
+            <div class="product-stat">Type: <strong>Capsules</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pricing Tables -->
+      <h3 class="card-title mt-24 mb-8">Gummies Pricing</h3>
+      <div style="overflow-x: auto;">
+        <table class="pricing-table">
+          <thead>
+            <tr>
+              <th>Pack</th>
+              <th>One-Time</th>
+              <th>Compare At</th>
+              <th>Subscription</th>
+              <th>Frequency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1 Pack</td>
+              <td>$40.99</td>
+              <td>$57.99</td>
+              <td class="sub-price">$34.99</td>
+              <td>Monthly</td>
+            </tr>
+            <tr>
+              <td>2 Pack</td>
+              <td>$57.99</td>
+              <td>$115.98</td>
+              <td class="sub-price">$49.99</td>
+              <td>Every 2 months</td>
+            </tr>
+            <tr>
+              <td>3 Pack</td>
+              <td>$68.99</td>
+              <td>$173.97</td>
+              <td class="sub-price">$58.99</td>
+              <td>Every 3 months</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="card-title mt-24 mb-8">Gut Ritual Pricing (One-Time Only)</h3>
+      <div style="overflow-x: auto;">
+        <table class="pricing-table">
+          <thead>
+            <tr>
+              <th>Pack</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1 Bottle</td><td>$59.00</td></tr>
+            <tr><td>2 Bottles</td><td>$69.00</td></tr>
+            <tr><td>3 Bottles</td><td>$79.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Brand Colors -->
+      <h3 class="card-title mt-24 mb-8">Brand Color Palette</h3>
+      <p class="card-text mb-16">From Nuora Offer Engine brand config. No gradients, no shadows, 1px border-radius max.</p>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-subtitle">Yellow (Primary)</div>
+          <div class="swatch-grid">
+            <div class="swatch"><div class="swatch-color" style="background:#FEFDF0;"></div><span class="swatch-label">25</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#FEFBE8;"></div><span class="swatch-label">50</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#FEF7C3;"></div><span class="swatch-label">100</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#FDE272;"></div><span class="swatch-label">200</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#FAC515;"></div><span class="swatch-label">400</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#EAAA08;"></div><span class="swatch-label">500</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#CA8504;"></div><span class="swatch-label">600</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Brown (Text)</div>
+          <div class="swatch-grid">
+            <div class="swatch"><div class="swatch-color" style="background:#854A0E;"></div><span class="swatch-label">800</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#713B12;"></div><span class="swatch-label">900</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#542C0D;"></div><span class="swatch-label">950</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-subtitle">Rose (Gut Ritual)</div>
+          <div class="swatch-grid">
+            <div class="swatch"><div class="swatch-color" style="background:#FDF0F4;"></div><span class="swatch-label">Light</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#9B083E;"></div><span class="swatch-label">Primary</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#7B1C3A;"></div><span class="swatch-label">PDP</span></div>
+            <div class="swatch"><div class="swatch-color" style="background:#4A0420;"></div><span class="swatch-label">Dark</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKIO INTEGRATION -->
+    <section class="section" id="skio">
+      <div class="section-header">
+        <div class="section-label">Section 06</div>
+        <h2 class="section-title">SKIO Subscription Integration</h2>
+        <p class="section-desc">When a line item has a selling_plan attached, the cart API response includes selling plan allocation data. Here's what to extract and display.</p>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="api-table mb-16">
+          <thead>
+            <tr>
+              <th>Display Element</th>
+              <th>Source</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Plan name</td>
+              <td class="endpoint-path">selling_plan_allocation.selling_plan.name</td>
+              <td>"Delivery every 30 Days"</td>
+            </tr>
+            <tr>
+              <td>Subscription price</td>
+              <td class="endpoint-path">selling_plan_allocation.per_delivery_price</td>
+              <td>$99.00</td>
+            </tr>
+            <tr>
+              <td>Compare at price</td>
+              <td class="endpoint-path">price_adjustments[0].compare_at_price</td>
+              <td>$152.00</td>
+            </tr>
+            <tr>
+              <td>Savings %</td>
+              <td class="endpoint-path">(1 - price/compare_at_price) * 100</td>
+              <td>Save 35%</td>
+            </tr>
+            <tr>
+              <td>Cadence badge</td>
+              <td class="endpoint-path">Parse from plan name or SKIO API</td>
+              <td>"Monthly" / "Quarterly"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">Reading Selling Plan Data</span>
+          <button class="code-copy-btn" data-copy="skio-code">Copy</button>
+        </div>
+        <pre id="skio-code">const cart = await fetch(window.Shopify.routes.root + 'cart.js')
+  .then(r => r.json());
+
+cart.items.forEach(item => {
+  if (item.selling_plan_allocation) {
+    const plan = item.selling_plan_allocation.selling_plan;
+    // plan.name = "Delivery every 30 Days"
+    // plan.id = selling plan ID (number)
+
+    const priceAdj = item.selling_plan_allocation.price_adjustments[0];
+    // priceAdj.price = subscription price (cents)
+    // priceAdj.compare_at_price = original price (cents)
+
+    const perDeliveryPrice = item.selling_plan_allocation.per_delivery_price;
+  }
+});</pre>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-subtitle">Optional: SKIO Storefront API</div>
+        <p class="card-text">If Shopify's cart response doesn't give enough selling plan detail (billing interval vs delivery interval), hit SKIO's endpoint:</p>
+        <div class="code-block mt-8">
+          <div class="code-block-header">
+            <span class="code-block-label">SKIO API (Optional)</span>
+            <button class="code-copy-btn" data-copy="skio-api">Copy</button>
+          </div>
+          <pre id="skio-api">// POST https://api.skio.com/storefront-v2-http/get-product-variant-selling-plans
+// Body: {
+//   "productVariantPlatformId":
+//     "gid://shopify/ProductVariant/VARIANT_ID"
+// }
+// Returns full selling plan groups with billing/delivery intervals</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- GOTCHAS -->
+    <section class="section" id="gotchas">
+      <div class="section-header">
+        <div class="section-label">Section 07</div>
+        <h2 class="section-title">SKIO / Selling Plan Gotchas</h2>
+        <p class="section-desc">Based on past issues with Ka-ching and SKIO. Read these carefully before implementation.</p>
+      </div>
+
+      <div class="gotcha-list">
+        <div class="gotcha-item critical">
+          <div class="gotcha-number">Gotcha #1 - Critical</div>
+          <div class="gotcha-title">Use line item key, NOT variant_id for cart/change.js</div>
+          <p class="gotcha-text">Multiple line items can share the same variant_id if they have different selling plans. Always use the unique <code>key</code> property from the cart item.</p>
+        </div>
+        <div class="gotcha-item">
+          <div class="gotcha-number">Gotcha #2</div>
+          <div class="gotcha-title">Selling plan IDs are per selling plan group</div>
+          <p class="gotcha-text">Duplicated products for A/B tests each have their own selling plan group with different IDs. Cross-sell logic needs to know which variant + selling_plan combo to use.</p>
+        </div>
+        <div class="gotcha-item critical">
+          <div class="gotcha-number">Gotcha #3 - Critical</div>
+          <div class="gotcha-title">Don't mix Ka-ching bundles with cart AJAX</div>
+          <p class="gotcha-text">If Ka-ching is still active on any products, its bundle logic may conflict with direct cart API calls. Confirm with Elliot which products are fully on SKIO selling plans only.</p>
+        </div>
+        <div class="gotcha-item">
+          <div class="gotcha-number">Gotcha #4</div>
+          <div class="gotcha-title">cart/clear before subscription checkout (legacy pattern)</div>
+          <p class="gotcha-text">The old buy boxes used cart/clear -> cart/add -> /checkout URLs. The new cart module replaces this. Subscriptions added via Cart AJAX API with selling_plan flow through checkout normally.</p>
+        </div>
+        <div class="gotcha-item">
+          <div class="gotcha-number">Gotcha #5</div>
+          <div class="gotcha-title">Currency handling</div>
+          <p class="gotcha-text">Cart API returns prices in presentment currency. Use <code>Shopify.currency.active</code> for the currency code. Don't hardcode <code>$</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FILE STRUCTURE -->
+    <section class="section" id="files">
+      <div class="section-header">
+        <div class="section-label">Section 08</div>
+        <h2 class="section-title">File Structure</h2>
+        <p class="section-desc">Where everything lives in the Shopify theme.</p>
+      </div>
+
+      <div class="file-tree">
+        <div><span class="folder">/assets/</span></div>
+        <div class="indent"><span class="file">nuora-cart.js</span> <span class="comment">- Core cart state manager + drawer component</span></div>
+        <div class="indent"><span class="file">nuora-cart.css</span> <span class="comment">- All cart styles (drawer + /cart page)</span></div>
+        <div style="height: 12px;"></div>
+        <div><span class="folder">/snippets/</span></div>
+        <div class="indent"><span class="file">nuora-cart-drawer.liquid</span> <span class="comment">- Drawer HTML shell (server-rendered, JS-hydrated)</span></div>
+        <div style="height: 12px;"></div>
+        <div><span class="folder">/templates/</span></div>
+        <div class="indent"><span class="comment">- No changes if using Replo for /cart page</span></div>
+        <div style="height: 12px;"></div>
+        <div><span class="folder">/layout/</span></div>
+        <div class="indent"><span class="file">theme.liquid</span> <span class="comment">- Add script tag before &lt;/body&gt; + /cart redirect</span></div>
+      </div>
+    </section>
+
+    <!-- TESTING CHECKLIST -->
+    <section class="section" id="checklist">
+      <div class="section-header">
+        <div class="section-label">Section 09</div>
+        <h2 class="section-title">Testing Checklist</h2>
+        <p class="section-desc">Click items to mark them as tested. Progress is tracked below.</p>
+      </div>
+
+      <div class="checklist-counter" id="checklistCounter">0 of 21 completed</div>
+
+      <ul class="checklist" id="checklist-list">
+        <li class="checklist-item" data-check="1"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cart drawer opens on add-to-cart from theme product pages</span></li>
+        <li class="checklist-item" data-check="2"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cart drawer opens on add-to-cart from Replo pages</span></li>
+        <li class="checklist-item" data-check="3"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cart drawer shows correct selling plan name for subscription items</span></li>
+        <li class="checklist-item" data-check="4"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cart drawer shows savings % for subscription vs one-time</span></li>
+        <li class="checklist-item" data-check="5"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cross-sell shows when gummies are in cart (offers capsules)</span></li>
+        <li class="checklist-item" data-check="6"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cross-sell shows when capsules are in cart (offers gummies)</span></li>
+        <li class="checklist-item" data-check="7"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cross-sell disappears when offered product is already in cart</span></li>
+        <li class="checklist-item" data-check="8"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Free shipping bar calculates correctly and animates</span></li>
+        <li class="checklist-item" data-check="9"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Free shipping bar updates on item add/remove</span></li>
+        <li class="checklist-item" data-check="10"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Bundle upsell shows for 1-pack variants</span></li>
+        <li class="checklist-item" data-check="11"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Bundle upgrade swaps variant correctly (preserves selling plan)</span></li>
+        <li class="checklist-item" data-check="12"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Quantity adjuster works and refreshes totals</span></li>
+        <li class="checklist-item" data-check="13"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Remove item works</span></li>
+        <li class="checklist-item" data-check="14"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Cart icon badge updates globally</span></li>
+        <li class="checklist-item" data-check="15"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">/cart redirects to custom cart page</span></li>
+        <li class="checklist-item" data-check="16"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Custom cart page renders same data as drawer</span></li>
+        <li class="checklist-item" data-check="17"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Checkout button goes to Shopify checkout with all items + selling plans</span></li>
+        <li class="checklist-item" data-check="18"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Works on mobile (375px - 428px viewport)</span></li>
+        <li class="checklist-item" data-check="19"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Works on desktop (1280px+)</span></li>
+        <li class="checklist-item" data-check="20"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">Currency formatting works for international visitors</span></li>
+        <li class="checklist-item" data-check="21"><div class="checklist-box"><span class="checklist-check">&#10003;</span></div><span class="checklist-text">No conflicts with Ka-ching or SKIO widget on PDPs</span></li>
+      </ul>
+    </section>
+
+    <!-- OPEN QUESTIONS -->
+    <section class="section" id="questions">
+      <div class="section-header">
+        <div class="section-label">Section 10</div>
+        <h2 class="section-title">Open Questions</h2>
+        <p class="section-desc">Decisions needed from Hardik before implementation starts.</p>
+      </div>
+
+      <div class="question-list">
+        <div class="question-item">
+          <div class="question-number">Question #1</div>
+          <div class="question-text">Free shipping threshold</div>
+          <p class="question-context">What's the current free shipping minimum? Or is shipping always free?</p>
+        </div>
+        <div class="question-item">
+          <div class="question-number">Question #2</div>
+          <div class="question-text">Cross-sell pricing</div>
+          <p class="question-context">Is $29.99 for capsules still the correct cross-sell price? Should it be a one-time purchase or subscription add? AfterSell already offers capsules at $29.99 post-purchase - if in-cart matches, the post-purchase offer loses novelty.</p>
+        </div>
+        <div class="question-item">
+          <div class="question-number">Question #3</div>
+          <div class="question-text">Quantity adjuster behavior</div>
+          <p class="question-context">Option A: Increment qty normally + show savings messaging. Option B (recommended): Hide qty adjuster entirely, only show bundle upgrade prompts. Option B prevents SKIO/Ka-ching SKU mapping issues.</p>
+        </div>
+        <div class="question-item">
+          <div class="question-number">Question #4</div>
+          <div class="question-text">Empty cart state</div>
+          <p class="question-context">What should the drawer show when cart is empty? Recommended products? CTA to shop?</p>
+        </div>
+        <div class="question-item">
+          <div class="question-number">Question #5</div>
+          <div class="question-text">Cart icon animation</div>
+          <p class="question-context">Shake/bounce on add-to-cart? Subtle or none?</p>
+        </div>
+        <div class="question-item">
+          <div class="question-number">Question #6</div>
+          <div class="question-text">A/B testing with Elevate</div>
+          <p class="question-context">Do we want to test the cart drawer design with Elevate? If so, we may need to support a cart:variant flag for split testing different layouts.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CORE MODULE -->
+    <section class="section" id="core-module">
+      <div class="section-header">
+        <div class="section-label">Section 11</div>
+        <h2 class="section-title">Cart State Manager (Core Module)</h2>
+        <p class="section-desc">The single source of truth. Both the drawer and /cart page subscribe to this. Full implementation reference below.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">nuora-cart.js - Core Module</span>
+          <button class="code-copy-btn" data-copy="core-module-code">Copy</button>
+        </div>
+        <pre id="core-module-code">const NuoraCart = (() => {
+  let state = {
+    cart: null,
+    isDrawerOpen: false,
+    crossSellOffer: null,
+    bundleUpsell: null,
+    shippingProgress: null,
+  };
+
+  const listeners = [];
+
+  function subscribe(fn) { listeners.push(fn); }
+  function notify() { listeners.forEach(fn => fn(state)); }
+
+  async function refresh() {
+    const root = window.Shopify.routes.root;
+    state.cart = await fetch(root + 'cart.js').then(r => r.json());
+    state.crossSellOffer = await getCrossSellOffer(state.cart.items);
+    state.bundleUpsell = getBundleUpsell(state.cart.items);
+    state.shippingProgress = getShippingProgress(state.cart.total_price);
+    notify();
+    updateCartBadge(state.cart.item_count);
+  }
+
+  async function addItem(variantId, quantity = 1, sellingPlan = null) {
+    const body = { items: [{ id: variantId, quantity }] };
+    if (sellingPlan) body.items[0].selling_plan = sellingPlan;
+    await fetch(window.Shopify.routes.root + 'cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await refresh();
+  }
+
+  async function updateItem(lineItemKey, quantity) {
+    await fetch(window.Shopify.routes.root + 'cart/change.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: lineItemKey, quantity }),
+    });
+    await refresh();
+  }
+
+  async function removeItem(lineItemKey) {
+    await updateItem(lineItemKey, 0);
+  }
+
+  function openDrawer() {
+    state.isDrawerOpen = true;
+    document.body.style.overflow = 'hidden';
+    notify();
+  }
+
+  function closeDrawer() {
+    state.isDrawerOpen = false;
+    document.body.style.overflow = '';
+    notify();
+  }
+
+  function updateCartBadge(count) {
+    document.querySelectorAll('[data-cart-count]').forEach(el => {
+      el.textContent = count;
+      el.style.display = count > 0 ? '' : 'none';
+    });
+  }
+
+  async function init() {
+    await refresh();
+
+    // Intercept theme add-to-cart forms
+    document.addEventListener('submit', async (e) => {
+      const form = e.target.closest('form[action="/cart/add"]');
+      if (!form) return;
+      e.preventDefault();
+      const formData = new FormData(form);
+      const id = formData.get('id');
+      const qty = formData.get('quantity') || 1;
+      const sellingPlan = formData.get('selling_plan');
+      await addItem(parseInt(id), parseInt(qty),
+        sellingPlan ? parseInt(sellingPlan) : null);
+      openDrawer();
+    });
+
+    // Listen for custom events
+    document.addEventListener('cart:refresh', refresh);
+    document.addEventListener('cart:open', openDrawer);
+    document.addEventListener('cart:close', closeDrawer);
+
+    // Hijack cart icon clicks
+    document.querySelectorAll(
+      'a[href="/cart"], .cart-icon, [data-cart-trigger]'
+    ).forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        openDrawer();
+      });
+    });
+  }
+
+  return {
+    init, subscribe, refresh,
+    addItem, updateItem, removeItem,
+    openDrawer, closeDrawer,
+    getState: () => state
+  };
+})();
+
+// Auto-init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', NuoraCart.init);
+} else {
+  NuoraCart.init();
+}</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="site-footer">
+    <p class="footer-text">Nuora Custom Cart Technical Spec - March 2026 - <a href="https://mynuora.com" target="_blank" rel="noopener">mynuora.com</a></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
