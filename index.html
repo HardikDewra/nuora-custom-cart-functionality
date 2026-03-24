@@ -326,18 +326,31 @@ document.addEventListener('cart:refresh', async () => {
       <div class="card mb-16">
         <div class="card-subtitle">Feature 01</div>
         <div class="card-title">Free Shipping Progress Bar</div>
-        <p class="card-text mb-16">Threshold-based progress bar at the top of the cart. Animates on cart updates. Changes to green with checkmark when qualified.</p>
+        <p class="card-text mb-16">Free shipping when total physical bottles/packs in cart is 2 or more. Only single-bottle/single-pack orders pay for shipping. Bar changes to green when qualified. Not based on dollar amount.</p>
         <div class="code-block">
           <div class="code-block-header">
             <span class="code-block-label">Shipping Logic</span>
             <button class="code-copy-btn" data-copy="shipping-code">Copy</button>
           </div>
-          <pre id="shipping-code">const FREE_SHIPPING_THRESHOLD = 10000; // $100.00 in cents
+          <pre id="shipping-code">// FREE SHIPPING: based on physical unit count, NOT price.
+// Only single-bottle/single-pack orders pay for shipping.
+// 2+ physical bottles/packs = free shipping.
 
-function getShippingProgress(cartTotal) {
-  const remaining = FREE_SHIPPING_THRESHOLD - cartTotal;
+function getPhysicalUnitCount(cartItems) {
+  let totalUnits = 0;
+  cartItems.forEach(item => {
+    const variantTitle = (item.variant_title || '').toLowerCase();
+    const match = variantTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
+    const unitsPerVariant = match ? parseInt(match[1]) : 1;
+    totalUnits += unitsPerVariant * item.quantity;
+  });
+  return totalUnits;
+}
 
-  if (remaining <= 0) {
+function getShippingProgress(cartItems) {
+  const totalUnits = getPhysicalUnitCount(cartItems);
+
+  if (totalUnits >= 2) {
     return {
       qualified: true,
       percentage: 100,
@@ -347,8 +360,8 @@ function getShippingProgress(cartTotal) {
 
   return {
     qualified: false,
-    percentage: Math.round((cartTotal / FREE_SHIPPING_THRESHOLD) * 100),
-    message: `$${(remaining / 100).toFixed(2)} away from FREE shipping!`,
+    percentage: 50,
+    message: 'Add 1 more pack for FREE shipping!',
   };
 }</pre>
         </div>

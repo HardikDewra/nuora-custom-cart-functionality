@@ -17,6 +17,7 @@
       compare: 40.99,
       emoji: '\uD83C\uDF4D',
       type: 'yellow',
+      physicalUnits: 1,
     },
     gummies3: {
       name: 'Feminine Balance Gummies',
@@ -27,6 +28,7 @@
       compare: 101.97,
       emoji: '\uD83C\uDF4D',
       type: 'yellow',
+      physicalUnits: 3,
     },
     capsules: {
       name: 'Gut Ritual Capsules',
@@ -37,10 +39,12 @@
       compare: 51.00,
       emoji: '\uD83D\uDC8A',
       type: 'rose',
+      physicalUnits: 1,
     },
   };
 
-  const FREE_SHIPPING_THRESHOLD = 100;
+  // FREE SHIPPING: ships free when total physical bottles/packs > 1
+  // Only single-bottle/single-pack orders pay for shipping
 
   let cart = [
     { id: 'gummies', qty: 1 },
@@ -92,19 +96,24 @@
       savingsEl.style.display = 'none';
     }
 
-    // Free shipping bar
-    const remaining = FREE_SHIPPING_THRESHOLD - subtotal;
-    if (remaining <= 0) {
+    // Free shipping bar - based on physical unit count, not price
+    let totalUnits = 0;
+    cart.forEach(item => {
+      const product = PRODUCTS[item.id];
+      totalUnits += product.physicalUnits * item.qty;
+    });
+    const freeShipping = totalUnits >= 2;
+
+    if (freeShipping) {
       shippingTextEl.textContent = "\u2705 You've unlocked FREE shipping!";
       shippingTextEl.classList.add('qualified');
       shippingFillEl.style.width = '100%';
       shippingFillEl.classList.add('qualified');
       shippingCostEl.textContent = 'FREE';
     } else {
-      shippingTextEl.textContent = '$' + remaining.toFixed(2) + ' away from FREE shipping!';
+      shippingTextEl.textContent = 'Add 1 more pack for FREE shipping!';
       shippingTextEl.classList.remove('qualified');
-      const pct = Math.min(Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100), 100);
-      shippingFillEl.style.width = pct + '%';
+      shippingFillEl.style.width = '50%';
       shippingFillEl.classList.remove('qualified');
       shippingCostEl.textContent = 'Calculated at checkout';
     }

@@ -26,7 +26,10 @@ const NuoraCartDrawer = (() => {
   'use strict';
 
   // ==================== CONFIG ====================
-  const FREE_SHIPPING_THRESHOLD = 10000; // $100.00 in cents - CHANGE AS NEEDED
+  // FREE SHIPPING LOGIC:
+  // Nuora ships free when total physical bottles/packs > 1.
+  // Only single-bottle/single-pack orders pay for shipping.
+  // This is NOT a dollar threshold - it's based on pack count.
 
   const CROSS_SELL_MAP = {
     gummies: {
@@ -214,26 +217,52 @@ const NuoraCartDrawer = (() => {
 
   // ==================== SHIPPING PROGRESS ====================
 
+  /**
+   * Free shipping when total physical bottles/packs in cart > 1.
+   * Only 1-bottle/1-pack orders pay for shipping.
+   *
+   * How it works:
+   * - Parse variant_title for pack count ("3 Bottles", "2 Pack", etc.)
+   * - Multiply by quantity
+   * - If total physical units >= 2, shipping is free
+   */
+  function getPhysicalUnitCount() {
+    if (!cart || !cart.items.length) return 0;
+
+    let totalUnits = 0;
+
+    cart.items.forEach(item => {
+      const variantTitle = (item.variant_title || '').toLowerCase();
+
+      // Extract pack/bottle count from variant title
+      // Matches patterns like "3 bottles", "2 pack", "3 packs", "1 bottle"
+      const match = variantTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
+      const unitsPerVariant = match ? parseInt(match[1]) : 1;
+
+      totalUnits += unitsPerVariant * item.quantity;
+    });
+
+    return totalUnits;
+  }
+
   function getShippingProgress() {
-    if (!cart) return { qualified: false, percentage: 0, message: '', remaining: 0 };
+    if (!cart) return { qualified: false, percentage: 0, message: '' };
 
-    const total = cart.total_price; // cents
-    const remaining = FREE_SHIPPING_THRESHOLD - total;
+    const totalUnits = getPhysicalUnitCount();
+    const qualified = totalUnits >= 2;
 
-    if (remaining <= 0) {
+    if (qualified) {
       return {
         qualified: true,
         percentage: 100,
         message: "You've unlocked FREE shipping!",
-        remaining: 0,
       };
     }
 
     return {
       qualified: false,
-      percentage: Math.round((total / FREE_SHIPPING_THRESHOLD) * 100),
-      message: formatMoney(remaining) + ' away from FREE shipping!',
-      remaining: remaining,
+      percentage: 50, // 1 out of 2 minimum units
+      message: 'Add 1 more pack for FREE shipping!',
     };
   }
 
