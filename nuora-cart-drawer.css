@@ -133,7 +133,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   padding: 8px 20px;
   background: #fce4ec;
   border-bottom: 1px solid var(--nc-border-solid);
@@ -146,10 +145,6 @@
 .nuora-cart-drawer__urgency strong {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.nuora-cart-drawer__urgency-icon {
-  font-size: 13px;
 }
 
 /* ==================== SHIPPING BAR ==================== */

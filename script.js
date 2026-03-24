@@ -106,8 +106,16 @@
 
     if (!cartItemsEl) return;
 
+    const urgencyTimerEl = document.getElementById('urgencyTimer');
+    const shippingBarEl = document.querySelector('.shipping-bar');
+    const cartFooterEl = document.getElementById('cartFooter');
+
     // ---- Empty cart state ----
     if (cart.length === 0) {
+      // Hide timer, shipping bar, footer when empty
+      if (urgencyTimerEl) urgencyTimerEl.style.display = 'none';
+      if (shippingBarEl) shippingBarEl.style.display = 'none';
+      if (cartFooterEl) cartFooterEl.style.display = 'none';
       let emptyHtml = '<div style="padding:24px 20px;text-align:center;">';
       emptyHtml += '<p style="font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--brown-950);margin-bottom:4px;">Your cart is empty</p>';
       emptyHtml += '<p style="font-size:13px;color:var(--brown-800);margin-bottom:20px;">Trusted by 50,000+ women. Start your routine.</p>';
@@ -160,6 +168,11 @@
       });
       return;
     }
+
+    // Show timer, shipping bar, footer when cart has items
+    if (urgencyTimerEl) urgencyTimerEl.style.display = '';
+    if (shippingBarEl) shippingBarEl.style.display = '';
+    if (cartFooterEl) cartFooterEl.style.display = '';
 
     // ---- Calculate totals ----
     let subtotal = 0;

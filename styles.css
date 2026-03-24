@@ -607,7 +607,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   padding: 8px 20px;
   background: var(--negative-bg);
   border-bottom: 1px solid var(--border-solid);
@@ -619,10 +618,6 @@ body {
 .urgency-timer strong {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-.urgency-icon {
-  font-size: 13px;
 }
 
 /* Shipping Bar */
