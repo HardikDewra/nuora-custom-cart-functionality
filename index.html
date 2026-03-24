@@ -62,6 +62,7 @@
       <a href="#products">Products</a>
       <a href="#skio">SKIO</a>
       <a href="#gotchas">Gotchas</a>
+      <a href="#theme-integration">Integration</a>
       <a href="#files">Files</a>
       <a href="#checklist">Checklist</a>
       <a href="#questions">Questions</a>
@@ -698,10 +699,68 @@ cart.items.forEach(item => {
       </div>
     </section>
 
+    <!-- THEME INTEGRATION -->
+    <section class="section" id="theme-integration">
+      <div class="section-header">
+        <div class="section-label">Section 08</div>
+        <h2 class="section-title">Theme Integration Guide</h2>
+        <p class="section-desc">Step-by-step for Tomide. The Shopify theme already has a built-in cart drawer - our custom drawer replaces it, not stacks on top.</p>
+      </div>
+
+      <div class="gotcha-list">
+        <div class="gotcha-item critical">
+          <div class="gotcha-number">Step 1 - Critical</div>
+          <div class="gotcha-title">Disable the theme's built-in cart drawer</div>
+          <p class="gotcha-text">The theme has its own slide-out cart. If you add ours without disabling theirs, you'll get two drawers fighting each other. Check theme settings for a "Cart type" option and set it to "Page" (not "Drawer"). If there's no setting, find the theme's cart drawer snippet (usually <code>cart-drawer.liquid</code> or similar) and comment out the include in <code>theme.liquid</code>.</p>
+        </div>
+
+        <div class="gotcha-item critical">
+          <div class="gotcha-number">Step 2 - Critical</div>
+          <div class="gotcha-title">Neutralize the theme's cart icon JS</div>
+          <p class="gotcha-text">The theme's cart icon is wired to open THEIR drawer via their own JS. Our script hijacks <code>a[href="/cart"]</code> clicks with <code>preventDefault</code>, but the theme's JS might fire first. After disabling their drawer (Step 1), their JS should have nothing to open. If the icon still behaves weird, find their cart icon element and add <code>data-cart-trigger</code> attribute so our code picks it up cleanly.</p>
+        </div>
+
+        <div class="gotcha-item">
+          <div class="gotcha-number">Step 3</div>
+          <div class="gotcha-title">Upload our files to the theme</div>
+          <p class="gotcha-text">Upload <code>nuora-cart-drawer.liquid</code> to <code>/snippets/</code>, <code>nuora-cart-drawer.css</code> and <code>nuora-cart-drawer.js</code> to <code>/assets/</code>. Then add the CSS tag in <code>&lt;head&gt;</code> and the Liquid render + JS tag before <code>&lt;/body&gt;</code> in <code>theme.liquid</code>. See the README for exact code.</p>
+        </div>
+
+        <div class="gotcha-item">
+          <div class="gotcha-number">Step 4</div>
+          <div class="gotcha-title">Theme pages: auto-detected</div>
+          <p class="gotcha-text">Our script auto-intercepts all <code>form[action="/cart/add"]</code> submissions on theme pages (PDPs, collections, etc). No extra work needed. The drawer opens automatically after add-to-cart.</p>
+        </div>
+
+        <div class="gotcha-item critical">
+          <div class="gotcha-number">Step 5 - Critical</div>
+          <div class="gotcha-title">Replo pages: add one line of custom code</div>
+          <p class="gotcha-text">Replo's ATC buttons are custom components, not standard Shopify forms. Our script can't auto-detect them. After each Replo add-to-cart action, fire this event in a Replo custom code block:</p>
+        </div>
+      </div>
+
+      <div class="code-block mt-16">
+        <div class="code-block-header">
+          <span class="code-block-label">Replo Custom Code (after ATC)</span>
+          <button class="code-copy-btn" data-copy="replo-event">Copy</button>
+        </div>
+        <pre id="replo-event">// Add this in Replo's custom code block, after the add-to-cart action
+document.dispatchEvent(new CustomEvent('cart:refresh'));
+
+// This tells our drawer: "something was added, refresh cart data and open"
+// Works from any Replo page - PDPs, presell pages, listicles, etc.</pre>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-subtitle">Testing After Integration</div>
+        <p class="card-text">After completing all steps, verify: (1) Only ONE drawer appears when cart icon is clicked. (2) Theme pages ATC opens our drawer automatically. (3) Replo pages ATC opens our drawer via the custom event. (4) The /cart URL redirects to /pages/cart (if using Replo cart page). If two drawers appear, Step 1 wasn't fully done - find and disable the theme's drawer.</p>
+      </div>
+    </section>
+
     <!-- FILE STRUCTURE -->
     <section class="section" id="files">
       <div class="section-header">
-        <div class="section-label">Section 08</div>
+        <div class="section-label">Section 09</div>
         <h2 class="section-title">File Structure</h2>
         <p class="section-desc">Where everything lives in the Shopify theme.</p>
       </div>
@@ -725,7 +784,7 @@ cart.items.forEach(item => {
     <!-- TESTING CHECKLIST -->
     <section class="section" id="checklist">
       <div class="section-header">
-        <div class="section-label">Section 09</div>
+        <div class="section-label">Section 10</div>
         <h2 class="section-title">Testing Checklist</h2>
         <p class="section-desc">Click items to mark them as tested. Progress is tracked below.</p>
       </div>
@@ -760,7 +819,7 @@ cart.items.forEach(item => {
     <!-- OPEN QUESTIONS -->
     <section class="section" id="questions">
       <div class="section-header">
-        <div class="section-label">Section 10</div>
+        <div class="section-label">Section 11</div>
         <h2 class="section-title">Open Questions</h2>
         <p class="section-desc">Decisions needed from Hardik before implementation starts.</p>
       </div>
@@ -802,7 +861,7 @@ cart.items.forEach(item => {
     <!-- CORE MODULE -->
     <section class="section" id="core-module">
       <div class="section-header">
-        <div class="section-label">Section 11</div>
+        <div class="section-label">Section 12</div>
         <h2 class="section-title">Cart State Manager (Core Module)</h2>
         <p class="section-desc">The single source of truth. Both the drawer and /cart page subscribe to this. Full implementation reference below.</p>
       </div>
