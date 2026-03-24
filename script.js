@@ -18,6 +18,7 @@
       emoji: '\uD83C\uDF4D',
       type: 'yellow',
       physicalUnits: 1,
+      upgradesTo: 'gummies3',
     },
     gummies3: {
       name: 'Feminine Balance Gummies',
@@ -29,6 +30,7 @@
       emoji: '\uD83C\uDF4D',
       type: 'yellow',
       physicalUnits: 3,
+      upgradesTo: null,
     },
     capsules: {
       name: 'Gut Ritual Capsules',
@@ -40,15 +42,53 @@
       emoji: '\uD83D\uDC8A',
       type: 'rose',
       physicalUnits: 1,
+      upgradesTo: 'capsules3',
+    },
+    capsules3: {
+      name: 'Gut Ritual Capsules',
+      variant: '3 Bottles',
+      plan: 'Every 3 Months',
+      savings: 'Saves 65% every order',
+      price: 69.00,
+      compare: 195.00,
+      emoji: '\uD83D\uDC8A',
+      type: 'rose',
+      physicalUnits: 3,
+      upgradesTo: null,
     },
   };
 
-  // FREE SHIPPING: ships free when total physical bottles/packs > 1
-  // Only single-bottle/single-pack orders pay for shipping
+  // Which IDs count as "has gummies" and "has capsules"
+  const GUMMY_IDS = ['gummies', 'gummies3'];
+  const CAPSULE_IDS = ['capsules', 'capsules3'];
 
   let cart = [
     { id: 'gummies', qty: 1 },
   ];
+
+  // ==================== HELPERS ====================
+  function hasGummies() {
+    return cart.some(i => GUMMY_IDS.includes(i.id));
+  }
+
+  function hasCapsules() {
+    return cart.some(i => CAPSULE_IDS.includes(i.id));
+  }
+
+  function hasMultiPack() {
+    return cart.some(i => PRODUCTS[i.id].physicalUnits >= 2);
+  }
+
+  // Find the first upgradeable item in cart (1-unit variant with an upgrade path)
+  function getUpgradeableItem() {
+    for (const item of cart) {
+      const product = PRODUCTS[item.id];
+      if (product.upgradesTo) {
+        return { cartItem: item, product: product, upgradeProduct: PRODUCTS[product.upgradesTo] };
+      }
+    }
+    return null;
+  }
 
   // ==================== RENDER CART ====================
   function renderCart() {
@@ -66,138 +106,7 @@
 
     if (!cartItemsEl) return;
 
-    // Calculate totals
-    let subtotal = 0;
-    let totalCompare = 0;
-    let totalQty = 0;
-
-    cart.forEach(item => {
-      const product = PRODUCTS[item.id];
-      subtotal += product.price * item.qty;
-      totalCompare += product.compare * item.qty;
-      totalQty += item.qty;
-    });
-
-    const savings = totalCompare - subtotal;
-
-    // Cart count
-    cartCountEl.textContent = '(' + totalQty + ')';
-
-    // Subtotal / total
-    subtotalEl.textContent = '$' + subtotal.toFixed(2);
-    totalPriceEl.textContent = '$' + subtotal.toFixed(2);
-    checkoutTotalEl.textContent = '$' + subtotal.toFixed(2);
-
-    // Savings
-    if (savings > 0) {
-      savingsEl.textContent = 'You save $' + savings.toFixed(2) + ' on this order';
-      savingsEl.style.display = '';
-    } else {
-      savingsEl.style.display = 'none';
-    }
-
-    // Free shipping - only if ANY variant in cart is a 2+ pack/bottle
-    // Two separate 1-unit products do NOT qualify
-    const hasMultiPack = cart.some(item => PRODUCTS[item.id].physicalUnits >= 2);
-
-    if (hasMultiPack) {
-      shippingTextEl.textContent = "\u2705 You've unlocked FREE shipping!";
-      shippingTextEl.classList.add('qualified');
-      shippingFillEl.style.width = '100%';
-      shippingFillEl.classList.add('qualified');
-      shippingCostEl.textContent = 'FREE';
-    } else {
-      shippingTextEl.textContent = 'Upgrade to 2+ packs for FREE shipping!';
-      shippingTextEl.classList.remove('qualified');
-      shippingFillEl.style.width = '50%';
-      shippingFillEl.classList.remove('qualified');
-      shippingCostEl.textContent = 'Calculated at checkout';
-    }
-
-    // Cart items
-    let itemsHTML = '';
-    cart.forEach(item => {
-      const product = PRODUCTS[item.id];
-      itemsHTML += '<div class="cart-item">';
-      itemsHTML += '<div class="cart-item-img ' + product.type + '">' + product.emoji + '</div>';
-      itemsHTML += '<div class="cart-item-details">';
-      itemsHTML += '<div class="cart-item-name">' + product.name + '</div>';
-      itemsHTML += '<div class="cart-item-variant">Variant: ' + product.variant + '</div>';
-      if (product.plan) {
-        itemsHTML += '<div class="cart-item-plan">' + product.plan + '</div>';
-      }
-      if (product.savings) {
-        itemsHTML += '<div class="cart-item-savings">' + product.savings + '</div>';
-      }
-      itemsHTML += '<div class="cart-item-bottom">';
-      itemsHTML += '<div style="display:flex;align-items:center;gap:8px;">';
-      itemsHTML += '<div class="qty-control">';
-      itemsHTML += '<button class="qty-btn" data-action="decrease" data-id="' + item.id + '">-</button>';
-      itemsHTML += '<span class="qty-value">' + item.qty + '</span>';
-      itemsHTML += '<button class="qty-btn" data-action="increase" data-id="' + item.id + '">+</button>';
-      itemsHTML += '</div>';
-      itemsHTML += '<button class="remove-btn" data-action="remove" data-id="' + item.id + '">Remove</button>';
-      itemsHTML += '</div>';
-      itemsHTML += '<div class="cart-item-price">';
-      itemsHTML += '<div class="price-current">$' + (product.price * item.qty).toFixed(2) + '</div>';
-      if (product.compare > product.price) {
-        itemsHTML += '<div class="price-compare">$' + (product.compare * item.qty).toFixed(2) + '</div>';
-      }
-      itemsHTML += '</div>';
-      itemsHTML += '</div>'; // cart-item-bottom
-      itemsHTML += '</div>'; // cart-item-details
-      itemsHTML += '</div>'; // cart-item
-    });
-
-    cartItemsEl.innerHTML = itemsHTML;
-
-    // Cross-sell visibility
-    const hasGummies = cart.some(i => i.id === 'gummies' || i.id === 'gummies3');
-    const hasCapsules = cart.some(i => i.id === 'capsules');
-
-    if (hasGummies && !hasCapsules) {
-      crossSellEl.style.display = '';
-      const headerEl = crossSellEl.querySelector('.cross-sell-header');
-      const nameEl = crossSellEl.querySelector('.cross-sell-name');
-      const priceEl = crossSellEl.querySelector('.cross-sell-price');
-      const imgEl = crossSellEl.querySelector('.cross-sell-img');
-      if (headerEl) headerEl.textContent = 'Women Who Added Capsules Saw Better Results';
-      if (nameEl) nameEl.textContent = 'Gut Ritual Capsules';
-      if (priceEl) priceEl.innerHTML = '$29.99 <span class="strike">$51.00</span>';
-      if (imgEl) imgEl.textContent = '\uD83D\uDC8A';
-    } else if (hasCapsules && !hasGummies) {
-      crossSellEl.style.display = '';
-      const headerEl = crossSellEl.querySelector('.cross-sell-header');
-      const nameEl = crossSellEl.querySelector('.cross-sell-name');
-      const priceEl = crossSellEl.querySelector('.cross-sell-price');
-      const imgEl = crossSellEl.querySelector('.cross-sell-img');
-      if (headerEl) headerEl.textContent = 'Women Who Added Gummies Saw Better Results';
-      if (nameEl) nameEl.textContent = 'Feminine Balance Gummies';
-      if (priceEl) priceEl.innerHTML = '$34.99 <span class="strike">$40.99</span>';
-      if (imgEl) imgEl.textContent = '\uD83C\uDF4D';
-    } else {
-      crossSellEl.style.display = 'none';
-    }
-
-    // Bundle upsell visibility (show for ANY 1-unit variant - gummies OR capsules)
-    const has1PackGummies = cart.some(i => i.id === 'gummies');
-    const has1BottleCapsules = cart.some(i => i.id === 'capsules');
-    const bundleInfoTitle = bundleUpsellEl.querySelector('.bundle-info-title');
-    const bundleInfoSub = bundleUpsellEl.querySelector('.bundle-info-sub');
-
-    if (has1PackGummies) {
-      bundleUpsellEl.style.display = '';
-      if (bundleInfoTitle) bundleInfoTitle.textContent = 'Switch to 3 Packs: Save 42%';
-      if (bundleInfoSub) bundleInfoSub.textContent = '$58.99/quarter vs $122.97';
-    } else if (has1BottleCapsules) {
-      bundleUpsellEl.style.display = '';
-      if (bundleInfoTitle) bundleInfoTitle.textContent = 'Switch to 3 Bottles: Save 65%';
-      if (bundleInfoSub) bundleInfoSub.textContent = '$69.00 vs $195.00 + FREE shipping';
-    } else {
-      bundleUpsellEl.style.display = 'none';
-    }
-
-    // Empty cart state with product suggestions
+    // ---- Empty cart state ----
     if (cart.length === 0) {
       let emptyHtml = '<div style="padding:24px 20px;text-align:center;">';
       emptyHtml += '<p style="font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--brown-950);margin-bottom:4px;">Your cart is empty</p>';
@@ -231,47 +140,170 @@
       cartItemsEl.innerHTML = emptyHtml;
       crossSellEl.style.display = 'none';
       bundleUpsellEl.style.display = 'none';
+      cartCountEl.textContent = '(0)';
+      subtotalEl.textContent = '$0.00';
+      totalPriceEl.textContent = '$0.00';
+      checkoutTotalEl.textContent = '$0.00';
+      savingsEl.style.display = 'none';
+      shippingTextEl.textContent = 'Upgrade to 2+ packs for FREE shipping!';
+      shippingTextEl.classList.remove('qualified');
+      shippingFillEl.style.width = '0%';
+      shippingFillEl.classList.remove('qualified');
+      shippingCostEl.textContent = 'Calculated at checkout';
 
       // Bind suggest buttons
       cartItemsEl.querySelectorAll('[data-suggest]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = btn.dataset.suggest;
-          cart.push({ id: id, qty: 1 });
+          cart.push({ id: btn.dataset.suggest, qty: 1 });
           renderCart();
         });
       });
+      return;
     }
 
-    // Bind item action buttons
-    cartItemsEl.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', handleCartAction);
+    // ---- Calculate totals ----
+    let subtotal = 0;
+    let totalCompare = 0;
+    let totalQty = 0;
+
+    cart.forEach(item => {
+      const product = PRODUCTS[item.id];
+      subtotal += product.price * item.qty;
+      totalCompare += product.compare * item.qty;
+      totalQty += item.qty;
     });
-  }
 
-  // ==================== CART ACTIONS ====================
-  function handleCartAction(e) {
-    const btn = e.currentTarget;
-    const action = btn.dataset.action;
-    const id = btn.dataset.id;
+    const savings = totalCompare - subtotal;
 
-    const itemIndex = cart.findIndex(i => i.id === id);
-    if (itemIndex === -1) return;
+    cartCountEl.textContent = '(' + totalQty + ')';
+    subtotalEl.textContent = '$' + subtotal.toFixed(2);
+    totalPriceEl.textContent = '$' + subtotal.toFixed(2);
+    checkoutTotalEl.textContent = '$' + subtotal.toFixed(2);
 
-    switch (action) {
-      case 'increase':
-        cart[itemIndex].qty += 1;
-        break;
-      case 'decrease':
-        if (cart[itemIndex].qty > 1) {
-          cart[itemIndex].qty -= 1;
-        }
-        break;
-      case 'remove':
-        cart.splice(itemIndex, 1);
-        break;
+    if (savings > 0) {
+      savingsEl.textContent = 'You save $' + savings.toFixed(2) + ' on this order';
+      savingsEl.style.display = '';
+    } else {
+      savingsEl.style.display = 'none';
     }
 
-    renderCart();
+    // ---- Free shipping ----
+    if (hasMultiPack()) {
+      shippingTextEl.textContent = "\u2705 You've unlocked FREE shipping!";
+      shippingTextEl.classList.add('qualified');
+      shippingFillEl.style.width = '100%';
+      shippingFillEl.classList.add('qualified');
+      shippingCostEl.textContent = 'FREE';
+    } else {
+      shippingTextEl.textContent = 'Upgrade to 2+ packs for FREE shipping!';
+      shippingTextEl.classList.remove('qualified');
+      shippingFillEl.style.width = '50%';
+      shippingFillEl.classList.remove('qualified');
+      shippingCostEl.textContent = 'Calculated at checkout';
+    }
+
+    // ---- Render line items ----
+    let itemsHTML = '';
+    cart.forEach(item => {
+      const product = PRODUCTS[item.id];
+      itemsHTML += '<div class="cart-item">';
+      itemsHTML += '<div class="cart-item-img ' + product.type + '">' + product.emoji + '</div>';
+      itemsHTML += '<div class="cart-item-details">';
+      itemsHTML += '<div class="cart-item-name">' + product.name + '</div>';
+      itemsHTML += '<div class="cart-item-variant">Variant: ' + product.variant + '</div>';
+      if (product.plan) {
+        itemsHTML += '<div class="cart-item-plan">' + product.plan + '</div>';
+      }
+      if (product.savings) {
+        itemsHTML += '<div class="cart-item-savings">' + product.savings + '</div>';
+      }
+      itemsHTML += '<div class="cart-item-bottom">';
+      itemsHTML += '<div style="display:flex;align-items:center;gap:8px;">';
+      itemsHTML += '<div class="qty-control">';
+      itemsHTML += '<button class="qty-btn" data-action="decrease" data-id="' + item.id + '">-</button>';
+      itemsHTML += '<span class="qty-value">' + item.qty + '</span>';
+      itemsHTML += '<button class="qty-btn" data-action="increase" data-id="' + item.id + '">+</button>';
+      itemsHTML += '</div>';
+      itemsHTML += '<button class="remove-btn" data-action="remove" data-id="' + item.id + '">Remove</button>';
+      itemsHTML += '</div>';
+      itemsHTML += '<div class="cart-item-price">';
+      itemsHTML += '<div class="price-current">$' + (product.price * item.qty).toFixed(2) + '</div>';
+      if (product.compare > product.price) {
+        itemsHTML += '<div class="price-compare">$' + (product.compare * item.qty).toFixed(2) + '</div>';
+      }
+      itemsHTML += '</div>';
+      itemsHTML += '</div>';
+      itemsHTML += '</div>';
+      itemsHTML += '</div>';
+    });
+    cartItemsEl.innerHTML = itemsHTML;
+
+    // Bind qty/remove buttons
+    cartItemsEl.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+        const idx = cart.findIndex(i => i.id === id);
+        if (idx === -1) return;
+
+        if (action === 'remove') {
+          cart.splice(idx, 1);
+        } else if (action === 'increase') {
+          cart[idx].qty += 1;
+        } else if (action === 'decrease' && cart[idx].qty > 1) {
+          cart[idx].qty -= 1;
+        }
+        renderCart();
+      });
+    });
+
+    // ---- Cross-sell ----
+    if (hasGummies() && !hasCapsules()) {
+      crossSellEl.style.display = '';
+      const headerEl = crossSellEl.querySelector('.cross-sell-header');
+      const nameEl = crossSellEl.querySelector('.cross-sell-name');
+      const priceEl = crossSellEl.querySelector('.cross-sell-price');
+      const imgEl = crossSellEl.querySelector('.cross-sell-img');
+      if (headerEl) headerEl.textContent = 'Women Who Added Capsules Saw Better Results';
+      if (nameEl) nameEl.textContent = 'Gut Ritual Capsules';
+      if (priceEl) priceEl.innerHTML = '$29.99 <span class="strike">$51.00</span>';
+      if (imgEl) imgEl.textContent = '\uD83D\uDC8A';
+    } else if (hasCapsules() && !hasGummies()) {
+      crossSellEl.style.display = '';
+      const headerEl = crossSellEl.querySelector('.cross-sell-header');
+      const nameEl = crossSellEl.querySelector('.cross-sell-name');
+      const priceEl = crossSellEl.querySelector('.cross-sell-price');
+      const imgEl = crossSellEl.querySelector('.cross-sell-img');
+      if (headerEl) headerEl.textContent = 'Women Who Added Gummies Saw Better Results';
+      if (nameEl) nameEl.textContent = 'Feminine Balance Gummies';
+      if (priceEl) priceEl.innerHTML = '$34.99 <span class="strike">$40.99</span>';
+      if (imgEl) imgEl.textContent = '\uD83C\uDF4D';
+    } else {
+      crossSellEl.style.display = 'none';
+    }
+
+    // ---- Bundle upsell ----
+    const upgradeable = getUpgradeableItem();
+    const bundleInfoTitle = bundleUpsellEl.querySelector('.bundle-info-title');
+    const bundleInfoSub = bundleUpsellEl.querySelector('.bundle-info-sub');
+    const upgradeBtn = document.getElementById('upgradeBundle');
+
+    if (upgradeable) {
+      const up = upgradeable.upgradeProduct;
+      const savingsPct = Math.round((1 - up.price / up.compare) * 100);
+      const isBottle = up.variant.includes('Bottle');
+
+      bundleUpsellEl.style.display = '';
+      if (bundleInfoTitle) {
+        bundleInfoTitle.textContent = 'Switch to ' + up.variant + ': Save ' + savingsPct + '%';
+      }
+      if (bundleInfoSub) {
+        const freeShipNote = up.physicalUnits >= 2 ? ' + FREE shipping' : '';
+        bundleInfoSub.textContent = '$' + up.price.toFixed(2) + ' vs $' + up.compare.toFixed(2) + freeShipNote;
+      }
+    } else {
+      bundleUpsellEl.style.display = 'none';
+    }
   }
 
   // ==================== CROSS-SELL ADD ====================
@@ -280,15 +312,11 @@
     if (!addBtn) return;
 
     addBtn.addEventListener('click', () => {
-      const hasGummies = cart.some(i => i.id === 'gummies' || i.id === 'gummies3');
-      const hasCapsules = cart.some(i => i.id === 'capsules');
-
-      if (hasGummies && !hasCapsules) {
+      if (hasGummies() && !hasCapsules()) {
         cart.push({ id: 'capsules', qty: 1 });
-      } else if (hasCapsules && !hasGummies) {
+      } else if (hasCapsules() && !hasGummies()) {
         cart.push({ id: 'gummies', qty: 1 });
       }
-
       renderCart();
     });
   }
@@ -299,11 +327,15 @@
     if (!upgradeBtn) return;
 
     upgradeBtn.addEventListener('click', () => {
-      const idx = cart.findIndex(i => i.id === 'gummies');
-      if (idx !== -1) {
-        cart[idx] = { id: 'gummies3', qty: 1 };
-        renderCart();
-      }
+      const upgradeable = getUpgradeableItem();
+      if (!upgradeable) return;
+
+      const idx = cart.findIndex(i => i.id === upgradeable.cartItem.id);
+      if (idx === -1) return;
+
+      // Swap to the upgraded variant
+      cart[idx] = { id: upgradeable.product.upgradesTo, qty: 1 };
+      renderCart();
     });
   }
 
@@ -317,10 +349,8 @@
       btn.addEventListener('click', () => {
         toggles.forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
-
-        const mode = btn.dataset.viewport;
         viewport.classList.remove('mobile', 'desktop');
-        viewport.classList.add(mode);
+        viewport.classList.add(btn.dataset.viewport);
       });
     });
   }
@@ -331,68 +361,52 @@
     const counter = document.getElementById('checklistCounter');
     if (!items.length) return;
 
-    // Load state from localStorage
     const saved = JSON.parse(localStorage.getItem('nuora-cart-checklist') || '{}');
 
     items.forEach(item => {
       const key = item.dataset.check;
-      if (saved[key]) {
-        item.classList.add('checked');
-      }
+      if (saved[key]) item.classList.add('checked');
 
       item.addEventListener('click', () => {
         item.classList.toggle('checked');
-
-        // Save state
         const state = {};
         items.forEach(i => {
-          if (i.classList.contains('checked')) {
-            state[i.dataset.check] = true;
-          }
+          if (i.classList.contains('checked')) state[i.dataset.check] = true;
         });
         localStorage.setItem('nuora-cart-checklist', JSON.stringify(state));
-
-        updateChecklistCounter();
+        updateCounter();
       });
     });
 
-    function updateChecklistCounter() {
+    function updateCounter() {
       const checked = document.querySelectorAll('.checklist-item.checked').length;
       counter.textContent = checked + ' of ' + items.length + ' completed';
     }
-
-    updateChecklistCounter();
+    updateCounter();
   }
 
   // ==================== CODE COPY ====================
   function initCodeCopy() {
     document.querySelectorAll('.code-copy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const targetId = btn.dataset.copy;
-        const codeEl = document.getElementById(targetId);
+        const codeEl = document.getElementById(btn.dataset.copy);
         if (!codeEl) return;
 
         navigator.clipboard.writeText(codeEl.textContent).then(() => {
-          const original = btn.textContent;
+          const orig = btn.textContent;
           btn.textContent = 'Copied!';
-          setTimeout(() => {
-            btn.textContent = original;
-          }, 1500);
+          setTimeout(() => { btn.textContent = orig; }, 1500);
         }).catch(() => {
-          // Fallback for older browsers
           const range = document.createRange();
           range.selectNodeContents(codeEl);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
           document.execCommand('copy');
-          selection.removeAllRanges();
-
-          const original = btn.textContent;
+          sel.removeAllRanges();
+          const orig = btn.textContent;
           btn.textContent = 'Copied!';
-          setTimeout(() => {
-            btn.textContent = original;
-          }, 1500);
+          setTimeout(() => { btn.textContent = orig; }, 1500);
         });
       });
     });
@@ -407,9 +421,7 @@
       const href = link.getAttribute('href');
       if (href && href.startsWith('#')) {
         const section = document.getElementById(href.slice(1));
-        if (section) {
-          sections.push({ el: section, link: link });
-        }
+        if (section) sections.push({ el: section, link: link });
       }
     });
 
@@ -417,18 +429,12 @@
 
     function onScroll() {
       const scrollPos = window.scrollY + 160;
-
-      let activeSection = sections[0];
+      let active = sections[0];
       for (const s of sections) {
-        if (s.el.offsetTop <= scrollPos) {
-          activeSection = s;
-        }
+        if (s.el.offsetTop <= scrollPos) active = s;
       }
-
       navLinks.forEach(l => l.classList.remove('active'));
-      if (activeSection) {
-        activeSection.link.classList.add('active');
-      }
+      if (active) active.link.classList.add('active');
     }
 
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -441,15 +447,9 @@
     const nav = document.getElementById('headerNav');
     if (!btn || !nav) return;
 
-    btn.addEventListener('click', () => {
-      nav.classList.toggle('open');
-    });
-
-    // Close on nav link click
+    btn.addEventListener('click', () => nav.classList.toggle('open'));
     nav.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        nav.classList.remove('open');
-      });
+      link.addEventListener('click', () => nav.classList.remove('open'));
     });
   }
 
@@ -462,7 +462,8 @@
       btn.textContent = 'Redirecting to checkout...';
       btn.style.background = 'var(--positive)';
       setTimeout(() => {
-        btn.innerHTML = 'Checkout - <span id="checkoutTotal">$' + cart.reduce((sum, i) => sum + PRODUCTS[i.id].price * i.qty, 0).toFixed(2) + '</span>';
+        const total = cart.reduce((sum, i) => sum + PRODUCTS[i.id].price * i.qty, 0).toFixed(2);
+        btn.innerHTML = 'Checkout - <span id="checkoutTotal">$' + total + '</span>';
         btn.style.background = '';
       }, 1500);
     });
