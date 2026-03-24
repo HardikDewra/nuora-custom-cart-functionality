@@ -346,8 +346,8 @@ const NuoraCartDrawer = (() => {
       fallbackTitle: 'Gut Ritual Capsules',
       fallbackPrice: 4900, // cents
       fallbackCompare: 6500,
-      stars: 4.6,
-      reviews: '11,800+',
+      stars: 4.5,
+      reviews: '4,200+',
       colorClass: 'is-rose',
       tagline: 'For bloating & gut health',
     },
@@ -449,11 +449,13 @@ const NuoraCartDrawer = (() => {
     const crossSellEl = document.getElementById('drawerCrossSell');
     const bundleEl = document.getElementById('drawerBundle');
     const shippingEl = document.getElementById('drawerShipping');
+    const urgencyEl = document.getElementById('drawerUrgency');
 
     if (emptyEl) emptyEl.style.display = isEmpty ? '' : 'none';
     if (scrollableEl) scrollableEl.style.display = isEmpty ? 'none' : '';
     if (footerEl) footerEl.style.display = isEmpty ? 'none' : '';
     if (shippingEl) shippingEl.style.display = isEmpty ? 'none' : '';
+    if (urgencyEl) urgencyEl.style.display = isEmpty ? 'none' : '';
 
     // Cart count
     const countEl = document.getElementById('drawerCartCount');
@@ -599,7 +601,7 @@ const NuoraCartDrawer = (() => {
     const totalSavings = cart.original_total_price - cart.total_price;
     if (savingsEl) {
       if (totalSavings > 0) {
-        savingsEl.textContent = 'You save ' + formatMoney(totalSavings) + ' on this order';
+        savingsEl.textContent = "You're saving " + formatMoney(totalSavings) + ' on your wellness routine';
         savingsEl.style.display = '';
       } else {
         savingsEl.style.display = 'none';
@@ -746,12 +748,34 @@ const NuoraCartDrawer = (() => {
     document.addEventListener('cart:close', closeDrawer);
   }
 
+  // ==================== URGENCY TIMER ====================
+  // Visual only - never actually expires the cart. Resets silently at 0.
+
+  function initUrgencyTimer() {
+    const timerEl = document.getElementById('drawerUrgencyTime');
+    if (!timerEl) return;
+
+    let seconds = 7 * 60;
+
+    function tick() {
+      if (seconds <= 0) seconds = 7 * 60;
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+      seconds--;
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  }
+
   // ==================== INIT ====================
 
   async function init() {
     await fetchCart();
     render();
     bindEvents();
+    initUrgencyTimer();
     console.log('[NuoraCart] Drawer initialized. Items:', cart ? cart.item_count : 0);
   }
 

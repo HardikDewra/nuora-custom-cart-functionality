@@ -130,7 +130,7 @@
       emptyHtml += '<div style="flex:1;min-width:0;">';
       emptyHtml += '<p style="font-size:13px;font-weight:600;color:var(--brown-950);margin:0 0 1px;">Gut Ritual Capsules</p>';
       emptyHtml += '<p style="font-size:11px;color:var(--brown-800);margin:0 0 2px;">For bloating & gut health</p>';
-      emptyHtml += '<p style="font-size:11px;color:var(--yellow-500);margin:0 0 4px;">&#9733;&#9733;&#9733;&#9733;&#9733; 11,800+ reviews</p>';
+      emptyHtml += '<p style="font-size:11px;color:var(--yellow-500);margin:0 0 4px;">&#9733;&#9733;&#9733;&#9733;&#9733; 4,200+ reviews</p>';
       emptyHtml += '<p style="font-size:13px;margin:0;"><strong style="color:var(--brown-950);">$29.99</strong> <span style="text-decoration:line-through;font-size:12px;color:var(--brown-800);">$51.00</span></p>';
       emptyHtml += '</div>';
       emptyHtml += '<button class="cross-sell-add" data-suggest="capsules" style="font-size:10px;padding:7px 10px;">+ Add</button>';
@@ -181,7 +181,7 @@
     checkoutTotalEl.textContent = '$' + subtotal.toFixed(2);
 
     if (savings > 0) {
-      savingsEl.textContent = 'You save $' + savings.toFixed(2) + ' on this order';
+      savingsEl.textContent = "You're saving $" + savings.toFixed(2) + ' on your wellness routine';
       savingsEl.style.display = '';
     } else {
       savingsEl.style.display = 'none';
@@ -469,6 +469,29 @@
     });
   }
 
+  // ==================== URGENCY TIMER ====================
+  function initUrgencyTimer() {
+    const timerEl = document.getElementById('urgencyTime');
+    const timerContainer = document.getElementById('urgencyTimer');
+    if (!timerEl || !timerContainer) return;
+
+    let seconds = 7 * 60; // 7 minutes
+
+    function tick() {
+      if (seconds <= 0) {
+        // Reset to 7 mins - visual only, never actually expires
+        seconds = 7 * 60;
+      }
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+      seconds--;
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  }
+
   // ==================== INIT ====================
   function init() {
     renderCart();
@@ -480,6 +503,7 @@
     initNavHighlight();
     initMobileMenu();
     initCheckoutBtn();
+    initUrgencyTimer();
   }
 
   if (document.readyState === 'loading') {

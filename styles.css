@@ -602,6 +602,29 @@ body {
   background: var(--yellow-50);
 }
 
+/* Urgency Timer */
+.urgency-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: var(--negative-bg);
+  border-bottom: 1px solid var(--border-solid);
+  font-size: 12px;
+  color: var(--negative);
+  font-weight: 500;
+}
+
+.urgency-timer strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.urgency-icon {
+  font-size: 13px;
+}
+
 /* Shipping Bar */
 .shipping-bar {
   padding: 12px 20px;
