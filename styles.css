@@ -5,7 +5,7 @@
  *
  * Rules:
  * - Light mode ONLY
- * - 1px border-radius max
+ * - 2px border-radius max
  * - NO shadows, NO glow, NO gradients
  * - Frosty glass OK (backdrop-filter blur)
  * - Heading: Americana BT Bold | Body: Montserrat
@@ -92,7 +92,7 @@ body {
   width: 32px;
   height: 32px;
   background: var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -119,7 +119,7 @@ body {
   color: var(--yellow-600);
   background: var(--yellow-100);
   padding: 3px 8px;
-  border-radius: 1px;
+  border-radius: 2px;
   border: 1px solid var(--yellow-200);
 }
 
@@ -134,7 +134,7 @@ body {
   color: var(--brown-800);
   text-decoration: none;
   padding: 6px 12px;
-  border-radius: 1px;
+  border-radius: 2px;
   transition: background 0.2s, color 0.2s;
 }
 
@@ -147,7 +147,7 @@ body {
   display: none;
   background: none;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 8px;
   cursor: pointer;
   color: var(--brown-900);
@@ -206,7 +206,7 @@ body {
   width: 6px;
   height: 6px;
   background: var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
 /* ==================== SECTION NAV (TABS) ==================== */
@@ -302,7 +302,7 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 24px;
   margin-bottom: 16px;
 }
@@ -348,14 +348,14 @@ body {
 .arch-diagram {
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 32px 24px;
   overflow-x: auto;
 }
 
 .arch-box {
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 16px;
   text-align: center;
   background: var(--yellow-50);
@@ -405,7 +405,7 @@ body {
 
 .arch-center-box {
   border: 1px solid var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 16px 24px;
   background: var(--yellow-50);
   text-align: center;
@@ -455,7 +455,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 2px 8px;
-  border-radius: 1px;
+  border-radius: 2px;
   font-family: monospace;
 }
 
@@ -481,7 +481,7 @@ body {
   position: relative;
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   overflow: hidden;
   min-height: 500px;
 }
@@ -507,7 +507,7 @@ body {
   display: flex;
   gap: 0;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -554,7 +554,7 @@ body {
 .cart-drawer-demo {
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   overflow: hidden;
   margin: 0 auto;
 }
@@ -590,7 +590,7 @@ body {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--white);
   cursor: pointer;
   color: var(--brown-800);
@@ -624,14 +624,14 @@ body {
   width: 100%;
   height: 6px;
   background: #F0F0F0;
-  border-radius: 1px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .shipping-bar-fill {
   height: 100%;
   background: var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
   transition: width 0.4s ease;
 }
 
@@ -657,7 +657,7 @@ body {
   flex-shrink: 0;
   background: var(--yellow-100);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -711,7 +711,7 @@ body {
   display: flex;
   align-items: center;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -801,7 +801,7 @@ body {
   align-items: center;
   padding: 12px;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--rose-light);
 }
 
@@ -811,7 +811,7 @@ body {
   flex-shrink: 0;
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -850,7 +850,7 @@ body {
   color: var(--white);
   border: none;
   padding: 8px 14px;
-  border-radius: 1px;
+  border-radius: 2px;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s;
@@ -878,7 +878,7 @@ body {
 .bundle-card {
   padding: 14px 16px;
   border: 1px solid var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--yellow-50);
   display: flex;
   align-items: center;
@@ -908,7 +908,7 @@ body {
   color: var(--brown-950);
   border: none;
   padding: 8px 16px;
-  border-radius: 1px;
+  border-radius: 2px;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s;
@@ -961,7 +961,7 @@ body {
   color: var(--white);
   border: none;
   padding: 14px 24px;
-  border-radius: 1px;
+  border-radius: 2px;
   cursor: pointer;
   margin-top: 8px;
   transition: background 0.2s;
@@ -992,7 +992,7 @@ body {
 .code-block {
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   overflow-x: auto;
   margin: 16px 0;
 }
@@ -1021,7 +1021,7 @@ body {
   color: var(--brown-800);
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   padding: 4px 10px;
   cursor: pointer;
   transition: background 0.2s;
@@ -1063,7 +1063,7 @@ body {
   background: var(--yellow-50);
   margin: 0 -12px;
   padding: 10px 12px;
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
 .checklist-item:last-child {
@@ -1075,7 +1075,7 @@ body {
   height: 18px;
   flex-shrink: 0;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--white);
   display: flex;
   align-items: center;
@@ -1120,7 +1120,7 @@ body {
   padding: 20px;
   background: var(--white);
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
 .file-tree .folder {
@@ -1156,7 +1156,7 @@ body {
 .product-card {
   padding: 20px;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1242,7 +1242,7 @@ body {
   padding: 16px 20px;
   border: 1px solid var(--border-solid);
   border-left: 3px solid var(--yellow-400);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--yellow-50);
 }
 
@@ -1287,7 +1287,7 @@ body {
 .question-item {
   padding: 16px 20px;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
   background: var(--white);
 }
 
@@ -1356,7 +1356,7 @@ body {
   width: 40px;
   height: 40px;
   border: 1px solid var(--border-solid);
-  border-radius: 1px;
+  border-radius: 2px;
 }
 
 .swatch-label {
