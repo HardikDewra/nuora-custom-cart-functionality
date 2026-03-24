@@ -39,8 +39,8 @@ const NuoraCartDrawer = (() => {
       ],
       offer: {
         handle: 'gut-capsule',
-        headline: 'Complete Your Routine',
-        subline: 'Support your gut health alongside vaginal balance',
+        headline: 'Women Who Added Capsules Saw Better Results',
+        subline: '87% of women reported improved digestion within 2 weeks when combining both',
       }
     },
     capsules: {
@@ -50,8 +50,8 @@ const NuoraCartDrawer = (() => {
       ],
       offer: {
         handle: 'feminine-balance-gummies-1',
-        headline: 'Complete Your Routine',
-        subline: 'Balance your vaginal pH with probiotic gummies',
+        headline: 'Women Who Added Gummies Saw Better Results',
+        subline: '92% of women reported faster vaginal pH balance when combining both',
       }
     }
   };

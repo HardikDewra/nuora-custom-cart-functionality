@@ -21,7 +21,7 @@
     },
     gummies3: {
       name: 'Feminine Balance Gummies',
-      variant: '3 Pack',
+      variant: '3 Packs',
       plan: 'Subscribe & Save - Quarterly',
       savings: 'Saves 42% every order',
       price: 58.99,
@@ -161,12 +161,21 @@
 
     if (hasGummies && !hasCapsules) {
       crossSellEl.style.display = '';
-    } else if (hasCapsules && !hasGummies) {
-      // Show gummies cross-sell (swap content)
-      crossSellEl.style.display = '';
+      const headerEl = crossSellEl.querySelector('.cross-sell-header');
       const nameEl = crossSellEl.querySelector('.cross-sell-name');
       const priceEl = crossSellEl.querySelector('.cross-sell-price');
       const imgEl = crossSellEl.querySelector('.cross-sell-img');
+      if (headerEl) headerEl.textContent = 'Women Who Added Capsules Saw Better Results';
+      if (nameEl) nameEl.textContent = 'Gut Ritual Capsules';
+      if (priceEl) priceEl.innerHTML = '$29.99 <span class="strike">$51.00</span>';
+      if (imgEl) imgEl.textContent = '\uD83D\uDC8A';
+    } else if (hasCapsules && !hasGummies) {
+      crossSellEl.style.display = '';
+      const headerEl = crossSellEl.querySelector('.cross-sell-header');
+      const nameEl = crossSellEl.querySelector('.cross-sell-name');
+      const priceEl = crossSellEl.querySelector('.cross-sell-price');
+      const imgEl = crossSellEl.querySelector('.cross-sell-img');
+      if (headerEl) headerEl.textContent = 'Women Who Added Gummies Saw Better Results';
       if (nameEl) nameEl.textContent = 'Feminine Balance Gummies';
       if (priceEl) priceEl.innerHTML = '$34.99 <span class="strike">$40.99</span>';
       if (imgEl) imgEl.textContent = '\uD83C\uDF4D';
