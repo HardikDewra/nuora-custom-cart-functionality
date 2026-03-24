@@ -326,31 +326,30 @@ document.addEventListener('cart:refresh', async () => {
       <div class="card mb-16">
         <div class="card-subtitle">Feature 01</div>
         <div class="card-title">Free Shipping Progress Bar</div>
-        <p class="card-text mb-16">Free shipping when total physical bottles/packs in cart is 2 or more. Only single-bottle/single-pack orders pay for shipping. Bar changes to green when qualified. Not based on dollar amount.</p>
+        <p class="card-text mb-16">Free shipping when ANY variant in cart is a 2+ pack/bottle (e.g. 2 Packs, 3 Bottles). Two separate 1-unit products do NOT qualify. Only a multi-pack variant triggers free shipping. Not based on dollar amount.</p>
         <div class="code-block">
           <div class="code-block-header">
             <span class="code-block-label">Shipping Logic</span>
             <button class="code-copy-btn" data-copy="shipping-code">Copy</button>
           </div>
-          <pre id="shipping-code">// FREE SHIPPING: based on physical unit count, NOT price.
-// Only single-bottle/single-pack orders pay for shipping.
-// 2+ physical bottles/packs = free shipping.
+          <pre id="shipping-code">// FREE SHIPPING: only if ANY variant is a 2+ pack/bottle.
+// Two separate 1-unit products do NOT qualify.
+// Examples:
+//   1 Pack gummies + 1 Bottle capsules = NOT free
+//   2 Packs gummies + 1 Bottle capsules = FREE (2-pack variant)
+//   3 Bottles capsules only = FREE (3-bottle variant)
 
-function getPhysicalUnitCount(cartItems) {
-  let totalUnits = 0;
-  cartItems.forEach(item => {
+function hasMultiPackVariant(cartItems) {
+  return cartItems.some(item => {
     const variantTitle = (item.variant_title || '').toLowerCase();
     const match = variantTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
     const unitsPerVariant = match ? parseInt(match[1]) : 1;
-    totalUnits += unitsPerVariant * item.quantity;
+    return unitsPerVariant >= 2;
   });
-  return totalUnits;
 }
 
 function getShippingProgress(cartItems) {
-  const totalUnits = getPhysicalUnitCount(cartItems);
-
-  if (totalUnits >= 2) {
+  if (hasMultiPackVariant(cartItems)) {
     return {
       qualified: true,
       percentage: 100,
@@ -361,7 +360,7 @@ function getShippingProgress(cartItems) {
   return {
     qualified: false,
     percentage: 50,
-    message: 'Add 1 more pack for FREE shipping!',
+    message: 'Upgrade to 2+ packs for FREE shipping!',
   };
 }</pre>
         </div>

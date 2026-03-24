@@ -257,38 +257,31 @@ const NuoraCartDrawer = (() => {
   // ==================== SHIPPING PROGRESS ====================
 
   /**
-   * Free shipping when total physical bottles/packs in cart > 1.
-   * Only 1-bottle/1-pack orders pay for shipping.
+   * Free shipping when ANY variant in cart is a 2+ pack/bottle.
+   * Two separate 1-unit products do NOT qualify.
+   * Only a multi-pack variant (2 Packs, 3 Bottles, etc.) triggers free shipping.
    *
-   * How it works:
-   * - Parse variant_title for pack count ("3 Bottles", "2 Pack", etc.)
-   * - Multiply by quantity
-   * - If total physical units >= 2, shipping is free
+   * Examples:
+   * - 1 Pack gummies + 1 Bottle capsules = NOT free (both are 1-unit variants)
+   * - 2 Packs gummies + 1 Bottle capsules = FREE (gummies is 2-pack)
+   * - 3 Bottles capsules only = FREE (3-bottle variant)
+   * - 1 Pack gummies only = NOT free
    */
-  function getPhysicalUnitCount() {
-    if (!cart || !cart.items.length) return 0;
+  function hasMultiPackVariant() {
+    if (!cart || !cart.items.length) return false;
 
-    let totalUnits = 0;
-
-    cart.items.forEach(item => {
+    return cart.items.some(item => {
       const variantTitle = (item.variant_title || '').toLowerCase();
-
-      // Extract pack/bottle count from variant title
-      // Matches patterns like "3 bottles", "2 pack", "3 packs", "1 bottle"
       const match = variantTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
       const unitsPerVariant = match ? parseInt(match[1]) : 1;
-
-      totalUnits += unitsPerVariant * item.quantity;
+      return unitsPerVariant >= 2;
     });
-
-    return totalUnits;
   }
 
   function getShippingProgress() {
     if (!cart) return { qualified: false, percentage: 0, message: '' };
 
-    const totalUnits = getPhysicalUnitCount();
-    const qualified = totalUnits >= 2;
+    const qualified = hasMultiPackVariant();
 
     if (qualified) {
       return {
@@ -300,8 +293,8 @@ const NuoraCartDrawer = (() => {
 
     return {
       qualified: false,
-      percentage: 50, // 1 out of 2 minimum units
-      message: 'Add 1 more pack for FREE shipping!',
+      percentage: 50,
+      message: 'Upgrade to 2+ packs for FREE shipping!',
     };
   }
 

@@ -96,22 +96,18 @@
       savingsEl.style.display = 'none';
     }
 
-    // Free shipping bar - based on physical unit count, not price
-    let totalUnits = 0;
-    cart.forEach(item => {
-      const product = PRODUCTS[item.id];
-      totalUnits += product.physicalUnits * item.qty;
-    });
-    const freeShipping = totalUnits >= 2;
+    // Free shipping - only if ANY variant in cart is a 2+ pack/bottle
+    // Two separate 1-unit products do NOT qualify
+    const hasMultiPack = cart.some(item => PRODUCTS[item.id].physicalUnits >= 2);
 
-    if (freeShipping) {
+    if (hasMultiPack) {
       shippingTextEl.textContent = "\u2705 You've unlocked FREE shipping!";
       shippingTextEl.classList.add('qualified');
       shippingFillEl.style.width = '100%';
       shippingFillEl.classList.add('qualified');
       shippingCostEl.textContent = 'FREE';
     } else {
-      shippingTextEl.textContent = 'Add 1 more pack for FREE shipping!';
+      shippingTextEl.textContent = 'Upgrade to 2+ packs for FREE shipping!';
       shippingTextEl.classList.remove('qualified');
       shippingFillEl.style.width = '50%';
       shippingFillEl.classList.remove('qualified');
@@ -183,10 +179,20 @@
       crossSellEl.style.display = 'none';
     }
 
-    // Bundle upsell visibility (show if 1-pack gummies in cart)
-    const has1Pack = cart.some(i => i.id === 'gummies');
-    if (has1Pack) {
+    // Bundle upsell visibility (show for ANY 1-unit variant - gummies OR capsules)
+    const has1PackGummies = cart.some(i => i.id === 'gummies');
+    const has1BottleCapsules = cart.some(i => i.id === 'capsules');
+    const bundleInfoTitle = bundleUpsellEl.querySelector('.bundle-info-title');
+    const bundleInfoSub = bundleUpsellEl.querySelector('.bundle-info-sub');
+
+    if (has1PackGummies) {
       bundleUpsellEl.style.display = '';
+      if (bundleInfoTitle) bundleInfoTitle.textContent = 'Switch to 3 Packs: Save 42%';
+      if (bundleInfoSub) bundleInfoSub.textContent = '$58.99/quarter vs $122.97';
+    } else if (has1BottleCapsules) {
+      bundleUpsellEl.style.display = '';
+      if (bundleInfoTitle) bundleInfoTitle.textContent = 'Switch to 3 Bottles: Save 65%';
+      if (bundleInfoSub) bundleInfoSub.textContent = '$69.00 vs $195.00 + FREE shipping';
     } else {
       bundleUpsellEl.style.display = 'none';
     }
