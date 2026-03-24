@@ -191,11 +191,49 @@
       bundleUpsellEl.style.display = 'none';
     }
 
-    // Empty cart state
+    // Empty cart state with product suggestions
     if (cart.length === 0) {
-      cartItemsEl.innerHTML = '<div style="padding:40px 20px;text-align:center;"><p style="font-size:14px;color:var(--brown-800);margin-bottom:12px;">Your cart is empty</p><p style="font-size:13px;color:var(--brown-800);opacity:0.6;">Add some products to get started</p></div>';
+      let emptyHtml = '<div style="padding:24px 20px;text-align:center;">';
+      emptyHtml += '<p style="font-family:var(--font-heading);font-size:18px;font-weight:700;color:var(--brown-950);margin-bottom:4px;">Your cart is empty</p>';
+      emptyHtml += '<p style="font-size:13px;color:var(--brown-800);margin-bottom:20px;">Trusted by 50,000+ women. Start your routine.</p>';
+
+      // Gummies suggestion
+      emptyHtml += '<div style="display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--border-solid);border-left:3px solid var(--yellow-400);border-radius:4px;margin-bottom:10px;text-align:left;">';
+      emptyHtml += '<div style="width:52px;height:52px;flex-shrink:0;background:var(--yellow-100);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;">\uD83C\uDF4D</div>';
+      emptyHtml += '<div style="flex:1;min-width:0;">';
+      emptyHtml += '<p style="font-size:13px;font-weight:600;color:var(--brown-950);margin:0 0 1px;">Vaginal Probiotic Gummies</p>';
+      emptyHtml += '<p style="font-size:11px;color:var(--brown-800);margin:0 0 2px;">Our #1 bestseller</p>';
+      emptyHtml += '<p style="font-size:11px;color:var(--yellow-500);margin:0 0 4px;">&#9733;&#9733;&#9733;&#9733;&#9733; 11,800+ reviews</p>';
+      emptyHtml += '<p style="font-size:13px;margin:0;"><strong style="color:var(--brown-950);">$34.99</strong> <span style="text-decoration:line-through;font-size:12px;color:var(--brown-800);">$57.99</span></p>';
+      emptyHtml += '</div>';
+      emptyHtml += '<button class="cross-sell-add" data-suggest="gummies" style="background:var(--yellow-600);font-size:10px;padding:7px 10px;">+ Add</button>';
+      emptyHtml += '</div>';
+
+      // Capsules suggestion
+      emptyHtml += '<div style="display:flex;gap:12px;align-items:center;padding:14px;border:1px solid var(--border-solid);border-left:3px solid var(--rose-primary);border-radius:4px;text-align:left;">';
+      emptyHtml += '<div style="width:52px;height:52px;flex-shrink:0;background:var(--rose-light);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;">\uD83D\uDC8A</div>';
+      emptyHtml += '<div style="flex:1;min-width:0;">';
+      emptyHtml += '<p style="font-size:13px;font-weight:600;color:var(--brown-950);margin:0 0 1px;">Gut Ritual Capsules</p>';
+      emptyHtml += '<p style="font-size:11px;color:var(--brown-800);margin:0 0 2px;">For bloating & gut health</p>';
+      emptyHtml += '<p style="font-size:11px;color:var(--yellow-500);margin:0 0 4px;">&#9733;&#9733;&#9733;&#9733;&#9733; 11,800+ reviews</p>';
+      emptyHtml += '<p style="font-size:13px;margin:0;"><strong style="color:var(--brown-950);">$29.99</strong> <span style="text-decoration:line-through;font-size:12px;color:var(--brown-800);">$51.00</span></p>';
+      emptyHtml += '</div>';
+      emptyHtml += '<button class="cross-sell-add" data-suggest="capsules" style="font-size:10px;padding:7px 10px;">+ Add</button>';
+      emptyHtml += '</div>';
+
+      emptyHtml += '</div>';
+      cartItemsEl.innerHTML = emptyHtml;
       crossSellEl.style.display = 'none';
       bundleUpsellEl.style.display = 'none';
+
+      // Bind suggest buttons
+      cartItemsEl.querySelectorAll('[data-suggest]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.suggest;
+          cart.push({ id: id, qty: 1 });
+          renderCart();
+        });
+      });
     }
 
     // Bind item action buttons

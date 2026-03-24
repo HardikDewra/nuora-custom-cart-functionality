@@ -296,6 +296,112 @@ const NuoraCartDrawer = (() => {
     document.body.classList.remove('nuora-cart-open');
   }
 
+  // ==================== EMPTY STATE PRODUCT SUGGESTIONS ====================
+
+  const SUGGESTED_PRODUCTS = [
+    {
+      handle: 'feminine-balance-gummies-1',
+      fallbackTitle: 'Vaginal Probiotic Gummies',
+      fallbackPrice: 3499, // cents
+      fallbackCompare: 5799,
+      stars: 4.6,
+      reviews: '11,800+',
+      colorClass: 'is-yellow',
+      tagline: 'Our #1 bestseller',
+    },
+    {
+      handle: 'gut-capsule',
+      fallbackTitle: 'Gut Ritual Capsules',
+      fallbackPrice: 4900, // cents
+      fallbackCompare: 6500,
+      stars: 4.6,
+      reviews: '11,800+',
+      colorClass: 'is-rose',
+      tagline: 'For bloating & gut health',
+    },
+  ];
+
+  async function renderEmptyState() {
+    const container = document.getElementById('drawerEmptyProducts');
+    if (!container) return;
+
+    let html = '';
+
+    for (const item of SUGGESTED_PRODUCTS) {
+      let title = item.fallbackTitle;
+      let price = item.fallbackPrice;
+      let compareAt = item.fallbackCompare;
+      let image = '';
+      let variantId = null;
+
+      // Try to fetch live product data
+      try {
+        const product = await fetch(getRoot() + 'products/' + item.handle + '.js')
+          .then(r => r.json());
+        title = product.title;
+        price = product.variants[0].price;
+        compareAt = product.variants[0].compare_at_price || compareAt;
+        image = product.featured_image
+          ? product.featured_image.replace(/(\.[^.]+)$/, '_180x$1')
+          : '';
+        variantId = product.variants[0].id;
+      } catch (e) {
+        // Use fallbacks
+      }
+
+      html += '<div class="nuora-cart-drawer__suggest-card ' + item.colorClass + '">';
+
+      // Image
+      html += '<div class="nuora-cart-drawer__suggest-img ' + (item.colorClass === 'is-rose' ? 'is-rose' : '') + '">';
+      if (image) {
+        html += '<img src="' + image + '" alt="' + title + '" loading="lazy">';
+      }
+      html += '</div>';
+
+      // Info
+      html += '<div class="nuora-cart-drawer__suggest-info">';
+      html += '<p class="nuora-cart-drawer__suggest-name">' + title + '</p>';
+      html += '<p class="nuora-cart-drawer__suggest-meta">' + item.tagline + '</p>';
+      html += '<p class="nuora-cart-drawer__suggest-stars">';
+      // Star rating
+      const fullStars = Math.floor(item.stars);
+      for (let i = 0; i < fullStars; i++) html += '&#9733;';
+      if (item.stars % 1 >= 0.5) html += '&#9733;';
+      html += ' ' + item.reviews + ' reviews</p>';
+
+      // Price
+      html += '<div class="nuora-cart-drawer__suggest-price">';
+      html += '<span class="nuora-cart-drawer__suggest-price-current">' + formatMoney(price) + '</span>';
+      if (compareAt && compareAt > price) {
+        html += '<span class="nuora-cart-drawer__suggest-price-compare">' + formatMoney(compareAt) + '</span>';
+      }
+      html += '</div>';
+
+      // Add button
+      if (variantId) {
+        html += '<button class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" data-variant-id="' + variantId + '">+ Add to Cart</button>';
+      } else {
+        html += '<a href="/products/' + item.handle + '" class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" style="text-decoration:none;text-align:center;display:inline-block;">View Product</a>';
+      }
+
+      html += '</div>'; // info
+      html += '</div>'; // card
+    }
+
+    html += '<a href="/collections/all" class="nuora-cart-drawer__empty-browse">Browse all products</a>';
+
+    container.innerHTML = html;
+
+    // Bind add buttons
+    container.querySelectorAll('[data-variant-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const vid = parseInt(btn.dataset.variantId);
+        btn.textContent = 'Adding...';
+        await addToCart(vid, 1, null);
+      });
+    });
+  }
+
   // ==================== RENDER ====================
 
   async function render() {
@@ -330,6 +436,7 @@ const NuoraCartDrawer = (() => {
     if (isEmpty) {
       if (crossSellEl) crossSellEl.style.display = 'none';
       if (bundleEl) bundleEl.style.display = 'none';
+      renderEmptyState();
       return;
     }
 
