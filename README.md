@@ -30,9 +30,9 @@ The site includes a working cart demo where you can:
 
 | Role | Person | Responsibility |
 |------|--------|----------------|
-| CRO | Hardik | Spec author, decision maker |
+| CRO + Design | Hardik | Spec author, brand guidelines, decision maker |
 | Dev | Tomide | Implementation |
-| Design | Nikita | Brand guidelines, visual review |
+| Owner | Nikita | Nuora brand owner |
 
 ## Brand Guidelines
 
