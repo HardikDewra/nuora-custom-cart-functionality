@@ -565,7 +565,7 @@ body {
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-solid);
-  background: var(--yellow-50);
+  background: var(--white);
 }
 
 .drawer-header-title {
@@ -721,7 +721,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--yellow-50);
+  background: var(--white);
   border: none;
   cursor: pointer;
   color: var(--brown-900);
@@ -732,7 +732,7 @@ body {
 }
 
 .qty-btn:hover {
-  background: var(--yellow-100);
+  background: var(--yellow-50);
 }
 
 .qty-value {
@@ -921,7 +921,7 @@ body {
 /* Cart Footer */
 .cart-footer {
   padding: 20px;
-  background: var(--yellow-50);
+  background: var(--white);
 }
 
 .cart-summary-row {
