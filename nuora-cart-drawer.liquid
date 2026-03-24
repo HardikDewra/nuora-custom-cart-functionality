@@ -1,0 +1,99 @@
+{% comment %}
+  Nuora Cart Drawer - Slide-out Cart Component
+
+  INSTALLATION:
+  1. Upload this file to /snippets/nuora-cart-drawer.liquid
+  2. Add {% render 'nuora-cart-drawer' %} to layout/theme.liquid before </body>
+  3. Upload nuora-cart-drawer.css to /assets/
+  4. Upload nuora-cart-drawer.js to /assets/
+  5. Add the CSS/JS tags to theme.liquid <head> and before </body>
+
+  This drawer triggers on:
+  - Cart icon click (hijacks a[href="/cart"], .cart-icon, [data-cart-trigger])
+  - Any add-to-cart form submission
+  - Custom event: document.dispatchEvent(new CustomEvent('cart:open'))
+  - Replo ATC via: document.dispatchEvent(new CustomEvent('cart:refresh'))
+{% endcomment %}
+
+<!-- Cart Drawer Overlay -->
+<div id="nuora-cart-overlay" class="nuora-cart-overlay" aria-hidden="true"></div>
+
+<!-- Cart Drawer -->
+<div id="nuora-cart-drawer" class="nuora-cart-drawer" aria-hidden="true" role="dialog" aria-label="Shopping cart">
+
+  <!-- Drawer Header -->
+  <div class="nuora-cart-drawer__header">
+    <h2 class="nuora-cart-drawer__title">
+      YOUR CART <span class="nuora-cart-drawer__count" id="drawerCartCount">(0)</span>
+    </h2>
+    <button class="nuora-cart-drawer__close" id="drawerClose" aria-label="Close cart">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Free Shipping Progress Bar -->
+  <div class="nuora-cart-drawer__shipping" id="drawerShipping">
+    <p class="nuora-cart-drawer__shipping-text" id="drawerShippingText"></p>
+    <div class="nuora-cart-drawer__shipping-track">
+      <div class="nuora-cart-drawer__shipping-fill" id="drawerShippingFill"></div>
+    </div>
+  </div>
+
+  <!-- Cart Items (scrollable) -->
+  <div class="nuora-cart-drawer__items" id="drawerItems">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Cross-sell Section -->
+  <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
+    <p class="nuora-cart-drawer__section-title">COMPLETE YOUR ROUTINE</p>
+    <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Bundle Upsell Section -->
+  <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
+    <p class="nuora-cart-drawer__section-title">UPGRADE & SAVE</p>
+    <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Cart Footer -->
+  <div class="nuora-cart-drawer__footer">
+    <div class="nuora-cart-drawer__summary">
+      <div class="nuora-cart-drawer__summary-row">
+        <span>Subtotal</span>
+        <span id="drawerSubtotal">$0.00</span>
+      </div>
+      <div class="nuora-cart-drawer__summary-row">
+        <span>Shipping</span>
+        <span id="drawerShippingCost">Calculated at checkout</span>
+      </div>
+      <div class="nuora-cart-drawer__summary-row nuora-cart-drawer__summary-total">
+        <span>Total</span>
+        <span id="drawerTotal">$0.00</span>
+      </div>
+      <p class="nuora-cart-drawer__savings" id="drawerSavings" style="display:none;"></p>
+    </div>
+    <button class="nuora-cart-drawer__checkout" id="drawerCheckout">
+      CHECKOUT - <span id="drawerCheckoutTotal">$0.00</span>
+    </button>
+    <div class="nuora-cart-drawer__trust">
+      <span>&#x1F512; Secure checkout</span>
+      <span>30-day guarantee</span>
+      <span>Cancel anytime</span>
+    </div>
+  </div>
+
+  <!-- Empty Cart State -->
+  <div class="nuora-cart-drawer__empty" id="drawerEmpty" style="display:none;">
+    <p class="nuora-cart-drawer__empty-title">Your cart is empty</p>
+    <p class="nuora-cart-drawer__empty-text">Discover our best sellers and start your wellness routine.</p>
+    <a href="/collections/all" class="nuora-cart-drawer__empty-cta">SHOP NOW</a>
+  </div>
+
+</div>

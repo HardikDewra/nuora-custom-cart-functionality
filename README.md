@@ -42,16 +42,46 @@ All styling follows the Nuora Offer Engine brand config:
 - **Body font:** Montserrat (Google Fonts)
 - **Primary color:** Yellow (#FAC515)
 - **Text color:** Brown-950 (#542C0D) - never pure black
-- **Rules:** No shadows, no gradients, no glow effects, 1px border-radius max, light mode only
+- **Border radius:** 4px on all elements
+- **Hover states:** Go lighter (rgba white overlay), never darker
+- **Rules:** No shadows, no gradients, no glow effects, light mode only
 
 ## Files
 
+### Spec Site (GitHub Pages)
 ```
 index.html    - Main spec site
 styles.css    - All styles (Nuora brand system)
 script.js     - Cart demo, checklist, code copy, nav
-README.md     - This file
-nuora-custom-cart-brief.md              - Full technical brief for Tomide
+```
+
+### Production Code (for Shopify theme)
+```
+nuora-cart-drawer.liquid  - Drawer HTML (upload to /snippets/)
+nuora-cart-drawer.css     - Drawer styles (upload to /assets/)
+nuora-cart-drawer.js      - Drawer logic + cart state manager (upload to /assets/)
+```
+
+### Installation (Tomide)
+1. Upload `nuora-cart-drawer.liquid` to `/snippets/`
+2. Upload `nuora-cart-drawer.css` to `/assets/`
+3. Upload `nuora-cart-drawer.js` to `/assets/`
+4. In `layout/theme.liquid` `<head>`, add:
+   ```liquid
+   {{ 'nuora-cart-drawer.css' | asset_url | stylesheet_tag }}
+   ```
+5. In `layout/theme.liquid` before `</body>`, add:
+   ```liquid
+   {% render 'nuora-cart-drawer' %}
+   <script src="{{ 'nuora-cart-drawer.js' | asset_url }}" defer></script>
+   ```
+6. The drawer auto-initializes and hijacks cart icon clicks + ATC forms sitewide
+7. For Replo pages, fire `document.dispatchEvent(new CustomEvent('cart:refresh'))` after ATC
+
+### Reference Docs
+```
+README.md                               - This file
+nuora-custom-cart-brief.md              - Full technical brief
 Claude-Custom checkout carts for Nuora brand.md  - Original conversation export
 ```
 
