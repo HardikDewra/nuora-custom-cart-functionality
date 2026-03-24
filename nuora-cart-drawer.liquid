@@ -41,28 +41,34 @@
     </div>
   </div>
 
-  <!-- Cart Items (scrollable) -->
-  <div class="nuora-cart-drawer__items" id="drawerItems">
-    <!-- Populated by JS -->
-  </div>
+  <!-- Scrollable area: items + cross-sell + bundle -->
+  <!-- Checkout footer stays pinned at the bottom (near thumb on mobile) -->
+  <div class="nuora-cart-drawer__scrollable" id="drawerScrollable">
 
-  <!-- Cross-sell Section -->
-  <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
-    <p class="nuora-cart-drawer__section-title">COMPLETE YOUR ROUTINE</p>
-    <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard">
+    <!-- Cart Items -->
+    <div class="nuora-cart-drawer__items" id="drawerItems">
       <!-- Populated by JS -->
     </div>
-  </div>
 
-  <!-- Bundle Upsell Section -->
-  <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
-    <p class="nuora-cart-drawer__section-title">UPGRADE & SAVE</p>
-    <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard">
-      <!-- Populated by JS -->
+    <!-- Cross-sell Section -->
+    <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
+      <p class="nuora-cart-drawer__section-title">COMPLETE YOUR ROUTINE</p>
+      <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard">
+        <!-- Populated by JS -->
+      </div>
     </div>
+
+    <!-- Bundle Upsell Section -->
+    <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
+      <p class="nuora-cart-drawer__section-title">UPGRADE & SAVE</p>
+      <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
   </div>
 
-  <!-- Cart Footer -->
+  <!-- Cart Footer (PINNED - always near thumb) -->
   <div class="nuora-cart-drawer__footer">
     <div class="nuora-cart-drawer__summary">
       <div class="nuora-cart-drawer__summary-row">

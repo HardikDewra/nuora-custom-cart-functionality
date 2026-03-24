@@ -167,12 +167,18 @@
   background: var(--nc-positive);
 }
 
-/* ==================== CART ITEMS (SCROLLABLE) ==================== */
-.nuora-cart-drawer__items {
+/* ==================== SCROLLABLE AREA ==================== */
+/* Items + cross-sell + bundle all scroll together.
+   Footer with checkout stays pinned at the bottom (thumb zone on mobile). */
+.nuora-cart-drawer__scrollable {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.nuora-cart-drawer__items {
+  /* No longer the flex child - lives inside scrollable wrapper */
 }
 
 /* Individual Line Item */
@@ -328,7 +334,6 @@
 .nuora-cart-drawer__cross-sell {
   padding: 16px 20px;
   border-top: 1px solid var(--nc-border-solid);
-  flex-shrink: 0;
 }
 
 .nuora-cart-drawer__section-title {
@@ -413,7 +418,6 @@
 .nuora-cart-drawer__bundle {
   padding: 16px 20px;
   border-top: 1px solid var(--nc-border-solid);
-  flex-shrink: 0;
 }
 
 .nuora-cart-drawer__bundle-card {

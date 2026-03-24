@@ -277,13 +277,14 @@ const NuoraCartDrawer = (() => {
     // Toggle empty state
     const emptyEl = document.getElementById('drawerEmpty');
     const itemsEl = document.getElementById('drawerItems');
+    const scrollableEl = document.getElementById('drawerScrollable');
     const footerEl = document.querySelector('.nuora-cart-drawer__footer');
     const crossSellEl = document.getElementById('drawerCrossSell');
     const bundleEl = document.getElementById('drawerBundle');
     const shippingEl = document.getElementById('drawerShipping');
 
     if (emptyEl) emptyEl.style.display = isEmpty ? '' : 'none';
-    if (itemsEl) itemsEl.style.display = isEmpty ? 'none' : '';
+    if (scrollableEl) scrollableEl.style.display = isEmpty ? 'none' : '';
     if (footerEl) footerEl.style.display = isEmpty ? 'none' : '';
     if (shippingEl) shippingEl.style.display = isEmpty ? 'none' : '';
 
