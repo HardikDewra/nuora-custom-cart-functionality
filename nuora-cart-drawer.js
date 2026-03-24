@@ -193,22 +193,61 @@ const NuoraCartDrawer = (() => {
 
   // ==================== BUNDLE UPSELL LOGIC ====================
 
-  function getBundleUpsell() {
+  /**
+   * Works for ALL products (gummies AND gut capsules).
+   * If any line item is a 1-bottle/1-pack variant, show upgrade to 3-pack/3-bottle.
+   * Dynamically fetches the 3-pack variant from the same product.
+   */
+  async function getBundleUpsell() {
     if (!cart || !cart.items.length) return null;
 
     for (const item of cart.items) {
       const variantTitle = (item.variant_title || '').toLowerCase();
-      const is1Pack = variantTitle.includes('1 bottle')
+      const is1Unit = variantTitle.includes('1 bottle')
         || variantTitle.includes('1 pack')
-        || variantTitle.includes('1-pack');
+        || variantTitle.includes('1-pack')
+        || variantTitle.includes('1-bottle');
 
-      if (is1Pack) {
+      if (is1Unit) {
+        // Fetch product to find the 3-pack/3-bottle variant
+        try {
+          const product = await fetch(
+            getRoot() + 'products/' + item.handle + '.js'
+          ).then(r => r.json());
+
+          const upgradeVariant = product.variants.find(v => {
+            const t = (v.title || '').toLowerCase();
+            return t.includes('3 bottle') || t.includes('3 pack')
+              || t.includes('3-pack') || t.includes('3-bottle');
+          });
+
+          if (upgradeVariant) {
+            const currentPrice = item.final_line_price;
+            const upgradePrice = upgradeVariant.price;
+            const savingsPct = upgradeVariant.compare_at_price
+              ? Math.round((1 - upgradePrice / upgradeVariant.compare_at_price) * 100)
+              : null;
+
+            return {
+              currentItem: item,
+              upgradeVariant: upgradeVariant,
+              upgradeVariantId: upgradeVariant.id,
+              message: 'Switch to 3-Pack' + (savingsPct ? ' & Save ' + savingsPct + '%' : ''),
+              subMessage: formatMoney(upgradePrice) + '/quarter vs ' + formatMoney(upgradeVariant.compare_at_price || currentPrice * 3),
+              sellingPlanId: item.selling_plan_allocation
+                ? item.selling_plan_allocation.selling_plan.id
+                : null,
+            };
+          }
+        } catch (e) {
+          console.warn('[NuoraCart] Bundle upsell fetch failed:', e);
+        }
+
+        // Fallback if fetch fails
         return {
           currentItem: item,
-          message: 'Switch to 3-Pack & Save 42%',
-          // NOTE: Tomide - fetch the 3-pack variant ID dynamically
-          // from the same product via /products/HANDLE.js
-          // Find the variant where title includes '3 bottle' or '3 pack'
+          message: 'Upgrade to 3-Pack & Save More',
+          subMessage: 'Free shipping + bigger savings per bottle',
         };
       }
     }
@@ -609,12 +648,38 @@ const NuoraCartDrawer = (() => {
     }
 
     // ---- Bundle Upsell ----
-    const bundle = getBundleUpsell();
+    const bundle = await getBundleUpsell();
     if (bundleEl) {
       if (bundle) {
         bundleEl.style.display = '';
-        // NOTE: Tomide needs to wire up the upgrade button
-        // with the actual 3-pack variant ID fetched from the product
+        const bundleCardEl = document.getElementById('drawerBundleCard');
+        if (bundleCardEl) {
+          let bHtml = '<div>';
+          bHtml += '<p class="nuora-cart-drawer__bundle-title">' + bundle.message + '</p>';
+          if (bundle.subMessage) {
+            bHtml += '<p class="nuora-cart-drawer__bundle-sub">' + bundle.subMessage + '</p>';
+          }
+          bHtml += '</div>';
+
+          if (bundle.upgradeVariantId) {
+            bHtml += '<button class="nuora-cart-drawer__bundle-btn" id="bundleUpgradeBtn">Upgrade</button>';
+          }
+
+          bundleCardEl.innerHTML = bHtml;
+
+          // Bind upgrade button
+          const upgradeBtn = document.getElementById('bundleUpgradeBtn');
+          if (upgradeBtn && bundle.upgradeVariantId) {
+            upgradeBtn.addEventListener('click', async () => {
+              upgradeBtn.textContent = 'Upgrading...';
+              await upgradeToPack(
+                bundle.currentItem.key,
+                bundle.upgradeVariantId,
+                bundle.sellingPlanId
+              );
+            });
+          }
+        }
       } else {
         bundleEl.style.display = 'none';
       }
