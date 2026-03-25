@@ -1,0 +1,104 @@
+{% comment %}
+  Nuora Cart Drawer — Server-rendered HTML shell
+  ================================================
+  Upload to: /snippets/nuora-cart-drawer.liquid
+  Render in theme.liquid: {% render 'nuora-cart-drawer' %}
+
+  Element IDs match nuora-cart-drawer.js render functions.
+  All content is JS-hydrated — this is just the shell.
+{% endcomment %}
+
+<!-- Overlay -->
+<div id="nuora-cart-overlay" class="nuora-cart-overlay" aria-hidden="true"></div>
+
+<!-- Drawer -->
+<div
+  id="nuora-cart-drawer"
+  class="nuora-cart-drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Shopping cart"
+  aria-hidden="true"
+>
+  <!-- Header -->
+  <div class="nuora-cart-drawer__header">
+    <h2 class="nuora-cart-drawer__title">
+      YOUR CART <span class="nuora-cart-drawer__count" id="drawerCartCount">(0)</span>
+    </h2>
+    <button
+      class="nuora-cart-drawer__close"
+      id="drawerClose"
+      aria-label="Close cart"
+      type="button"
+    >&times;</button>
+  </div>
+
+  <!-- Urgency Timer (Hardik update — visual only, resets at 0) -->
+  <div class="nuora-cart-drawer__urgency" id="drawerUrgency" style="display:none;">
+    <span>Due to high demand, we can only hold your cart for <strong id="drawerUrgencyTime">7:00</strong></span>
+  </div>
+
+  <!-- Shipping Bar -->
+  <div class="nuora-cart-drawer__shipping" id="drawerShipping">
+    <div class="nuora-cart-drawer__shipping-text" id="drawerShippingText"></div>
+    <div class="nuora-cart-drawer__shipping-track">
+      <div class="nuora-cart-drawer__shipping-fill" id="drawerShippingFill"></div>
+    </div>
+  </div>
+
+  <!-- Empty State (shown when cart is empty) -->
+  <div class="nuora-cart-drawer__empty" id="drawerEmpty" style="display:none;">
+    <h3 class="nuora-cart-drawer__empty-title">Your cart is empty</h3>
+    <p class="nuora-cart-drawer__empty-sub">Trusted by 50,000+ women. Start your routine.</p>
+    <div class="nuora-cart-drawer__empty-products" id="drawerEmptyProducts">
+      <!-- JS renders product suggestion cards here -->
+    </div>
+  </div>
+
+  <!-- Scrollable area (items + cross-sell + bundle) -->
+  <div class="nuora-cart-drawer__scrollable" id="drawerScrollable">
+
+    <!-- Line Items -->
+    <div class="nuora-cart-drawer__items" id="drawerItems"></div>
+
+    <!-- Cross-sell -->
+    <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
+      <h3 class="nuora-cart-drawer__section-title">Complete Your Routine</h3>
+      <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard"></div>
+    </div>
+
+    <!-- Bundle Upsell -->
+    <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
+      <h3 class="nuora-cart-drawer__section-title">Upgrade & Save</h3>
+      <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard"></div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="nuora-cart-drawer__footer" style="display:none;">
+    <div class="nuora-cart-drawer__summary-row">
+      <span>Subtotal</span>
+      <span id="drawerSubtotal">$0.00</span>
+    </div>
+    <div class="nuora-cart-drawer__summary-row">
+      <span>Shipping</span>
+      <span id="drawerShippingCost">Calculated at checkout</span>
+    </div>
+    <div class="nuora-cart-drawer__summary-row nuora-cart-drawer__summary-total">
+      <span>Total</span>
+      <span id="drawerTotal">$0.00</span>
+    </div>
+    <p class="nuora-cart-drawer__savings" id="drawerSavings" style="display:none;"></p>
+    <button
+      class="nuora-cart-drawer__checkout"
+      id="drawerCheckout"
+      type="button"
+    >CHECKOUT - <span id="drawerCheckoutTotal">$0.00</span></button>
+    <div class="nuora-cart-drawer__trust">
+      <span>&#x1F512; Secure checkout</span>
+      <span>&#x1F4AA; 30-day guarantee</span>
+      <span>&#x267B;&#xFE0F; Cancel anytime</span>
+    </div>
+  </div>
+</div>
