@@ -335,17 +335,18 @@
    font-family: var(--nc-font-body);
    font-size: 11px;
    font-weight: 600;
-   color: var(--nc-rose-primary);
+   color: var(--nc-brown-800);
    background: none;
    border: none;
    cursor: pointer;
    text-transform: uppercase;
    letter-spacing: 0.04em;
    padding: 4px 0;
+   opacity: 0.6;
    transition: opacity var(--nc-transition);
  }
  .nuora-cart-drawer__remove:hover {
-   opacity: 0.7;
+   opacity: 1;
  }
  
  /* ==================== CROSS-SELL ==================== */

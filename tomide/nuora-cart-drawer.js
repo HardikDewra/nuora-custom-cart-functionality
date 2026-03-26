@@ -309,19 +309,56 @@ const NuoraCartDrawer = (() => {
                 ? Math.round((1 - upgradeVariant.price / upgradeVariant.compare_at_price) * 100)
                 : 0;
   
-              // Check if upgrade variant qualifies for free shipping
               var upgradeTitle = (upgradeVariant.title || '').toLowerCase();
               var upgradeMatch = upgradeTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
               var upgradeUnits = upgradeMatch ? parseInt(upgradeMatch[1]) : 1;
               var freeShipNote = upgradeUnits >= 2 ? ' + FREE shipping' : '';
   
+              // Match purchase type: find the correct selling plan on the 3-pack variant
+              var sellingPlanId = null;
+              var isSubscription = !!item.selling_plan_allocation;
+  
+              if (isSubscription) {
+                // Find selling plan on the upgrade variant from the same selling plan group
+                var currentGroupId = null;
+                // Get the group ID from the product's selling plan groups
+                if (product.selling_plan_groups) {
+                  for (var g = 0; g < product.selling_plan_groups.length; g++) {
+                    var group = product.selling_plan_groups[g];
+                    var hasCurrentPlan = group.selling_plans.some(function(p) {
+                      return p.id === item.selling_plan_allocation.selling_plan.id;
+                    });
+                    if (hasCurrentPlan) {
+                      currentGroupId = group.id;
+                      break;
+                    }
+                  }
+                }
+  
+                // Find the selling plan allocation on the upgrade variant
+                if (upgradeVariant.selling_plan_allocations && upgradeVariant.selling_plan_allocations.length > 0) {
+                  if (currentGroupId) {
+                    // Match by same group
+                    var matchedAlloc = upgradeVariant.selling_plan_allocations.find(function(a) {
+                      return a.selling_plan_group_id === currentGroupId;
+                    });
+                    if (matchedAlloc) {
+                      sellingPlanId = matchedAlloc.selling_plan_id;
+                    }
+                  }
+                  // Fallback: use first available selling plan on the upgrade variant
+                  if (!sellingPlanId) {
+                    sellingPlanId = upgradeVariant.selling_plan_allocations[0].selling_plan_id;
+                  }
+                }
+              }
+              // If OTP (no selling_plan_allocation), sellingPlanId stays null = adds as OTP
+  
               return {
                 currentItem: item,
                 currentItemKey: item.key,
                 upgradeVariantId: upgradeVariant.id,
-                sellingPlanId: item.selling_plan_allocation
-                  ? item.selling_plan_allocation.selling_plan.id
-                  : null,
+                sellingPlanId: sellingPlanId,
                 message: 'Switch to ' + upgradeVariant.title + (savingsPct > 0 ? ' & Save ' + savingsPct + '%' : ''),
                 subMessage: formatMoney(upgradeVariant.price) + ' vs ' + formatMoney(upgradeVariant.compare_at_price || item.final_price * 3) + freeShipNote,
               };
@@ -485,11 +522,24 @@ const NuoraCartDrawer = (() => {
       }
   
       var planHtml = '';
-      if (planInfo) {
-        planHtml = '<p class="nuora-cart-drawer__item-plan">' + planInfo.displayName + '</p>';
-        if (planInfo.savingsPercent > 0) {
-          planHtml += '<p class="nuora-cart-drawer__item-savings">Saves ' + planInfo.savingsPercent + '% every order</p>';
+  
+      // Savings line — bottles get fixed percentages, everything else uses dynamic SKIO %
+      var savingsHtml = '';
+      var vtLower = (item.variant_title || '').toLowerCase();
+      var isBottle = vtLower.includes('bottle');
+  
+      if (isBottle) {
+        var packMatch = vtLower.match(/(\d+)\s*bottle/);
+        var bottleCount = packMatch ? parseInt(packMatch[1]) : 1;
+        if (bottleCount >= 3) {
+          savingsHtml = '<p class="nuora-cart-drawer__item-savings">Saves 65%</p>';
+        } else if (bottleCount >= 2) {
+          savingsHtml = '<p class="nuora-cart-drawer__item-savings">Saves 55%</p>';
+        } else {
+          savingsHtml = '<p class="nuora-cart-drawer__item-savings">Saves 25%</p>';
         }
+      } else if (planInfo && planInfo.savingsPercent > 0) {
+        savingsHtml = '<p class="nuora-cart-drawer__item-savings">Saves ' + planInfo.savingsPercent + '%</p>';
       }
   
       var html = '<div class="nuora-cart-drawer__item">';
@@ -500,13 +550,9 @@ const NuoraCartDrawer = (() => {
         html += '<p class="nuora-cart-drawer__item-variant">Variant: ' + item.variant_title + '</p>';
       }
       html += planHtml;
+      html += savingsHtml;
       html += '<div class="nuora-cart-drawer__item-bottom">';
       html += '<div class="nuora-cart-drawer__item-actions">';
-      html += '<div class="nuora-cart-drawer__qty">';
-      html += '<button class="nuora-cart-drawer__qty-btn" data-action="decrease" data-key="' + item.key + '">-</button>';
-      html += '<span class="nuora-cart-drawer__qty-value">' + item.quantity + '</span>';
-      html += '<button class="nuora-cart-drawer__qty-btn" data-action="increase" data-key="' + item.key + '">+</button>';
-      html += '</div>';
       html += '<button class="nuora-cart-drawer__remove" data-action="remove" data-key="' + item.key + '">Remove</button>';
       html += '</div>';
       html += '<div class="nuora-cart-drawer__item-price">';
@@ -534,6 +580,8 @@ const NuoraCartDrawer = (() => {
         var image = '';
         var variantId = null;
   
+        // Get first selling plan for subscription
+        var sellingPlanId = null;
         try {
           var product = await fetchProduct(item.handle);
           title = product.title;
@@ -541,6 +589,12 @@ const NuoraCartDrawer = (() => {
           compareAt = product.variants[0].compare_at_price || compareAt;
           image = product.featured_image ? getProductImageUrl(product.featured_image, '180x') : '';
           variantId = product.variants[0].id;
+          if (product.selling_plan_groups && product.selling_plan_groups.length > 0) {
+            var plans = product.selling_plan_groups[0].selling_plans;
+            if (plans && plans.length > 0) {
+              sellingPlanId = plans[0].id;
+            }
+          }
         } catch (e) {}
   
         html += '<div class="nuora-cart-drawer__suggest-card ' + item.colorClass + '">';
@@ -562,7 +616,7 @@ const NuoraCartDrawer = (() => {
         }
         html += '</div>';
         if (variantId) {
-          html += '<button class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" data-variant-id="' + variantId + '">+ Add to Cart</button>';
+          html += '<button class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" data-variant-id="' + variantId + '"' + (sellingPlanId ? ' data-selling-plan="' + sellingPlanId + '"' : '') + '>+ Add to Cart</button>';
         }
         html += '</div></div>';
       }
@@ -573,8 +627,9 @@ const NuoraCartDrawer = (() => {
       container.querySelectorAll('[data-variant-id]').forEach(function(btn) {
         btn.addEventListener('click', async function() {
           var vid = parseInt(btn.dataset.variantId);
+          var spId = btn.dataset.sellingPlan ? parseInt(btn.dataset.sellingPlan) : null;
           btn.textContent = 'Adding...';
-          await addToCart(vid, 1, null);
+          await addToCart(vid, 1, spId);
         });
       });
     }
@@ -698,7 +753,20 @@ const NuoraCartDrawer = (() => {
             var addBtn = document.getElementById('crossSellAddBtn');
             if (addBtn) {
               addBtn.addEventListener('click', function() {
-                addToCart(offer.variantId, 1, null);
+                // Match purchase type of items already in cart
+                // If any item has a subscription, add cross-sell as subscription
+                // If all items are OTP, add cross-sell as OTP
+                var sellingPlanId = null;
+                var hasSubscription = state.cart && state.cart.items.some(function(i) {
+                  return !!i.selling_plan_allocation;
+                });
+                if (hasSubscription && offer.product.selling_plan_groups && offer.product.selling_plan_groups.length > 0) {
+                  var plans = offer.product.selling_plan_groups[0].selling_plans;
+                  if (plans && plans.length > 0) {
+                    sellingPlanId = plans[0].id;
+                  }
+                }
+                addToCart(offer.variantId, 1, sellingPlanId);
               });
             }
           }
@@ -725,7 +793,29 @@ const NuoraCartDrawer = (() => {
             if (upgradeBtn) {
               upgradeBtn.addEventListener('click', async function() {
                 upgradeBtn.textContent = 'Upgrading...';
-                await upgradeToPack(bundle.currentItemKey, bundle.upgradeVariantId, bundle.sellingPlanId);
+                console.log('[NuoraCart] Upgrade:', {
+                  currentKey: bundle.currentItemKey,
+                  newVariantId: bundle.upgradeVariantId,
+                  sellingPlanId: bundle.sellingPlanId,
+                });
+                try {
+                  // Remove current item
+                  await shopifyFetch('cart/change.js', {
+                    method: 'POST',
+                    body: JSON.stringify({ id: bundle.currentItemKey, quantity: 0 }),
+                  });
+                  // Add upgrade variant
+                  var addBody = { items: [{ id: bundle.upgradeVariantId, quantity: 1 }] };
+                  if (bundle.sellingPlanId) addBody.items[0].selling_plan = bundle.sellingPlanId;
+                  await shopifyFetch('cart/add.js', {
+                    method: 'POST',
+                    body: JSON.stringify(addBody),
+                  });
+                  await refresh();
+                } catch (err) {
+                  console.error('[NuoraCart] Upgrade failed:', err);
+                  upgradeBtn.textContent = 'Upgrade';
+                }
               });
             }
           }
