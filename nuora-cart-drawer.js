@@ -502,7 +502,7 @@ const NuoraCartDrawer = (() => {
       if (planInfo) {
         planHtml = '<p class="nuora-cart-drawer__item-plan">' + planInfo.displayName + '</p>';
         if (planInfo.savingsPercent > 0) {
-          planHtml += '<p class="nuora-cart-drawer__item-savings">Saves ' + planInfo.savingsPercent + '% every order</p>';
+          planHtml += '<p class="nuora-cart-drawer__item-savings">Saves ' + planInfo.savingsPercent + '%</p>';
         }
       }
 
