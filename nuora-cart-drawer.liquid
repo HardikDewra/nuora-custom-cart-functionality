@@ -1,113 +1,99 @@
 {% comment %}
-  Nuora Cart Drawer - Slide-out Cart Component
+  Nuora Cart Drawer - A/B Test Shell
+  ====================================
+  Upload to: /snippets/nuora-cart-drawer.liquid
+  Render in theme.liquid: {% render 'nuora-cart-drawer' %}
 
-  INSTALLATION:
-  1. Upload this file to /snippets/nuora-cart-drawer.liquid
-  2. Add {% render 'nuora-cart-drawer' %} to layout/theme.liquid before </body>
-  3. Upload nuora-cart-drawer.css to /assets/
-  4. Upload nuora-cart-drawer.js to /assets/
-  5. Add the CSS/JS tags to theme.liquid <head> and before </body>
+  Supports two designs via body[data-cart-design]:
+    "a" (default) = UpCart-like minimal design (control)
+    "b" = Full custom cart with cross-sells, upsells, etc. (variant)
 
-  This drawer triggers on:
-  - Cart icon click (hijacks a[href="/cart"], .cart-icon, [data-cart-trigger])
-  - Any add-to-cart form submission
-  - Custom event: document.dispatchEvent(new CustomEvent('cart:open'))
-  - Replo ATC via: document.dispatchEvent(new CustomEvent('cart:refresh'))
+  Elevate A/B testing switches between designs by injecting:
+    document.body.dataset.cartDesign = 'b';
+
+  Element IDs match nuora-cart-drawer.js render functions.
+  All content is JS-hydrated - this is just the shell.
 {% endcomment %}
 
-<!-- Cart Drawer Overlay -->
+<!-- Default to Design A (control). Elevate overrides to 'b' for variant. -->
+<script>document.body.dataset.cartDesign = document.body.dataset.cartDesign || 'a';</script>
+
+<!-- Overlay -->
 <div id="nuora-cart-overlay" class="nuora-cart-overlay" aria-hidden="true"></div>
 
-<!-- Cart Drawer -->
-<div id="nuora-cart-drawer" class="nuora-cart-drawer" aria-hidden="true" role="dialog" aria-label="Shopping cart">
-
-  <!-- Drawer Header -->
+<!-- Drawer -->
+<div
+  id="nuora-cart-drawer"
+  class="nuora-cart-drawer"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Shopping cart"
+  aria-hidden="true"
+>
+  <!-- Header -->
   <div class="nuora-cart-drawer__header">
     <h2 class="nuora-cart-drawer__title">
       YOUR CART <span class="nuora-cart-drawer__count" id="drawerCartCount">(0)</span>
     </h2>
-    <button class="nuora-cart-drawer__close" id="drawerClose" aria-label="Close cart">
+    <button
+      class="nuora-cart-drawer__close"
+      id="drawerClose"
+      aria-label="Close cart"
+      type="button"
+    >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
       </svg>
     </button>
   </div>
 
-  <!-- Urgency Timer (visual only - never actually expires the cart) -->
+  <!-- Urgency Timer (visual only, resets at 0) -->
   <div class="nuora-cart-drawer__urgency" id="drawerUrgency" style="display:none;">
-    <span class="nuora-cart-drawer__urgency-text">Due to high demand, we can only hold your cart for <strong id="drawerUrgencyTime">7:00</strong></span>
+    <span>Due to high demand, we can only hold your cart for <strong id="drawerUrgencyTime">7:00</strong></span>
   </div>
 
-  <!-- Free Shipping Progress Bar -->
+  <!-- Shipping Bar (Design B only - hidden by CSS for Design A) -->
   <div class="nuora-cart-drawer__shipping" id="drawerShipping">
-    <p class="nuora-cart-drawer__shipping-text" id="drawerShippingText"></p>
+    <div class="nuora-cart-drawer__shipping-text" id="drawerShippingText"></div>
     <div class="nuora-cart-drawer__shipping-track">
       <div class="nuora-cart-drawer__shipping-fill" id="drawerShippingFill"></div>
     </div>
   </div>
 
-  <!-- Scrollable area: items + cross-sell + bundle -->
-  <!-- Checkout footer stays pinned at the bottom (near thumb on mobile) -->
+  <!-- Empty State (shown when cart is empty, both designs) -->
+  <div class="nuora-cart-drawer__empty" id="drawerEmpty" style="display:none;">
+    <h3 class="nuora-cart-drawer__empty-title">Your cart is empty</h3>
+    <p class="nuora-cart-drawer__empty-sub">Trusted by 50,000+ women. Start your routine.</p>
+    <div class="nuora-cart-drawer__empty-products" id="drawerEmptyProducts">
+      <!-- JS renders product suggestion cards here -->
+    </div>
+  </div>
+
+  <!-- Scrollable area (items + cross-sell + bundle) -->
   <div class="nuora-cart-drawer__scrollable" id="drawerScrollable">
 
-    <!-- Cart Items -->
-    <div class="nuora-cart-drawer__items" id="drawerItems">
-      <!-- Populated by JS -->
-    </div>
+    <!-- Line Items (JS renders different HTML per design) -->
+    <div class="nuora-cart-drawer__items" id="drawerItems"></div>
 
-    <!-- Cross-sell Section -->
+    <!-- Cross-sell (Design B only - hidden by CSS for Design A) -->
     <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
-      <p class="nuora-cart-drawer__section-title">COMPLETE YOUR ROUTINE</p>
-      <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard">
-        <!-- Populated by JS -->
-      </div>
+      <h3 class="nuora-cart-drawer__section-title">Complete Your Routine</h3>
+      <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard"></div>
     </div>
 
-    <!-- Bundle Upsell Section -->
+    <!-- Bundle Upsell (Design B only - hidden by CSS for Design A) -->
     <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
-      <p class="nuora-cart-drawer__section-title">UPGRADE & SAVE</p>
-      <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard">
-        <!-- Populated by JS -->
-      </div>
+      <h3 class="nuora-cart-drawer__section-title">Upgrade & Save</h3>
+      <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard"></div>
     </div>
 
   </div>
 
-  <!-- Cart Footer (PINNED - always near thumb) -->
-  <div class="nuora-cart-drawer__footer">
-    <div class="nuora-cart-drawer__summary">
-      <div class="nuora-cart-drawer__summary-row">
-        <span>Subtotal</span>
-        <span id="drawerSubtotal">$0.00</span>
-      </div>
-      <div class="nuora-cart-drawer__summary-row">
-        <span>Shipping</span>
-        <span id="drawerShippingCost">Calculated at checkout</span>
-      </div>
-      <div class="nuora-cart-drawer__summary-row nuora-cart-drawer__summary-total">
-        <span>Total</span>
-        <span id="drawerTotal">$0.00</span>
-      </div>
-      <p class="nuora-cart-drawer__savings" id="drawerSavings" style="display:none;"></p>
-    </div>
-    <button class="nuora-cart-drawer__checkout" id="drawerCheckout">
-      CHECKOUT - <span id="drawerCheckoutTotal">$0.00</span>
-    </button>
-    <div class="nuora-cart-drawer__trust">
-      <span>&#x1F512; Secure checkout</span>
-      <span>30-day guarantee</span>
-      <span>Cancel anytime</span>
-    </div>
-  </div>
-
-  <!-- Empty Cart State -->
-  <div class="nuora-cart-drawer__empty" id="drawerEmpty" style="display:none;">
-    <p class="nuora-cart-drawer__empty-title">Your cart is empty</p>
-    <p class="nuora-cart-drawer__empty-sub">Trusted by 50,000+ women. Start your routine.</p>
-
-    <div class="nuora-cart-drawer__empty-products" id="drawerEmptyProducts">
-      <!-- Populated by JS with actual product data -->
-    </div>
+  <!-- Footer (JS populates different content per design) -->
+  <div class="nuora-cart-drawer__footer" id="drawerFooter" style="display:none;">
+    <!-- Design A: SECURE CHECKOUT + guarantee -->
+    <!-- Design B: Subtotal/Shipping/Total + savings + CHECKOUT -->
+    <!-- JS renders the appropriate footer based on data-cart-design -->
   </div>
 
 </div>

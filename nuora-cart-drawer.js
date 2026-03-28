@@ -1,803 +1,1021 @@
 /**
- * Nuora Cart Drawer - Production JS
+ * Nuora Cart Drawer - Production JS (A/B Test Branch)
+ * =====================================================
+ * Merged: Tomide's battle-tested fixes + Hardik's features + Design Router
+ *
+ * New from Hardik:
+ *   - Free shipping based on multi-pack variant (not dollar threshold)
+ *   - Social proof cross-sell headlines
+ *   - Urgency timer (visual only, resets at 0)
+ *   - Empty cart state with product suggestions
+ *   - Savings text: "You're saving $X on your wellness routine"
+ *   - Bundle upsell includes "+ FREE shipping" note
+ *
+ * A/B Test layer:
+ *   - Design A: UpCart-like simplified cart (no cross-sells, no bundle upsell,
+ *     no shipping bar, trash-to-remove, secure checkout button, guarantee badge)
+ *   - Design B: Full custom cart with all features (cross-sells, bundle upsell,
+ *     shipping bar, full footer with subtotal/shipping/total/savings)
+ *   - Controlled via data-cart-design attribute on <body>
+ *
+ * Tomide's fixes preserved:
+ *   - compare_at_price from selling_plan_allocation level (not price_adjustments)
+ *   - Dynamic SKIO plan names
+ *   - Currency formatting (en-US for USD)
+ *   - Fetch/XHR interceptors for Replo
+ *   - Shipping bar !important for theme CSS conflicts
+ *   - body.nuora-cart-open class for scroll lock
  *
  * Upload to: /assets/nuora-cart-drawer.js
- * Load in theme.liquid before </body>:
- *   <script src="{{ 'nuora-cart-drawer.js' | asset_url }}" defer></script>
- *
- * This is the COMPLETE cart drawer logic:
- * - Cart state management (single source of truth)
- * - Drawer open/close with body scroll lock
- * - Free shipping progress bar
- * - Cross-sell logic (gummies <-> capsules)
- * - Bundle upsell (1-pack -> 3-pack upgrade)
- * - SKIO selling plan display
- * - Currency formatting via Shopify.currency.active
- * - Cart icon badge updates
- * - Event listeners for theme forms + Replo ATC
- *
- * IMPORTANT:
- * - Uses line item KEY (not variant_id) for cart/change.js
- * - Prices from Cart API are in CENTS (divide by 100)
- * - Currency code from Shopify.currency.active (don't hardcode $)
  */
 
 const NuoraCartDrawer = (() => {
-  'use strict';
+    'use strict';
 
-  // ==================== CONFIG ====================
-  // FREE SHIPPING LOGIC:
-  // Nuora ships free when total physical bottles/packs > 1.
-  // Only single-bottle/single-pack orders pay for shipping.
-  // This is NOT a dollar threshold - it's based on pack count.
+    // =========================================================================
+    // EARLY INTERCEPTS - run before any other script
+    // =========================================================================
+    let _drawerReady = false;
+    let _refreshFn = null;
+    let _openFn = null;
 
-  const CROSS_SELL_MAP = {
-    gummies: {
-      triggerHandles: [
-        'feminine-balance-gummies-1',
-        'nuora-vaginal-probiotic-gummies',
-      ],
-      offer: {
-        handle: 'gut-capsule',
-        headline: 'Women Who Added Capsules Saw Better Results',
-        subline: '87% of women reported improved digestion within 2 weeks when combining both',
+    function _onCartAdd() {
+      if (_drawerReady && _refreshFn && _openFn) {
+        _openFn();
+        _refreshFn();
       }
-    },
-    capsules: {
-      triggerHandles: [
-        'gut-capsule',
-        'gut-ritual-capsules',
-      ],
-      offer: {
+    }
+
+    const _origFetch = window.fetch;
+    window.fetch = function() {
+      var url = arguments[0];
+      var result = _origFetch.apply(this, arguments);
+      if (typeof url === 'string' && url.includes('/cart/add')) {
+        result.then(_onCartAdd).catch(function() {});
+      }
+      return result;
+    };
+
+    const _origXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      if (typeof url === 'string' && url.includes('/cart/add')) {
+        this.addEventListener('load', _onCartAdd);
+      }
+      return _origXHROpen.apply(this, arguments);
+    };
+
+    document.addEventListener('click', function(e) {
+      var link = e.target.closest('a[href="/cart"], a[href*="/cart?"], a[href$="/cart"]');
+      if (link) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (_drawerReady && _refreshFn && _openFn) {
+          _openFn();
+          _refreshFn();
+        }
+      }
+    }, true);
+
+    // =========================================================================
+    // CROSS-SELL MAP - social proof headlines (Hardik update)
+    // =========================================================================
+    const CROSS_SELL_MAP = {
+      gummies: {
+        triggerHandles: ['feminine-balance-gummies-1', 'nuora-vaginal-probiotic-gummies'],
+        offer: {
+          handle: 'gut-capsule',
+          headline: 'Women Who Added Capsules Saw Better Results',
+          subline: '87% of women reported improved digestion within 2 weeks when combining both',
+        },
+      },
+      capsules: {
+        triggerHandles: ['gut-capsule', 'gut-ritual-capsules'],
+        offer: {
+          handle: 'feminine-balance-gummies-1',
+          headline: 'Women Who Added Gummies Saw Better Results',
+          subline: '92% of women reported faster vaginal pH balance when combining both',
+        },
+      },
+    };
+
+    // =========================================================================
+    // EMPTY STATE PRODUCT SUGGESTIONS (Hardik update)
+    // =========================================================================
+    const SUGGESTED_PRODUCTS = [
+      {
         handle: 'feminine-balance-gummies-1',
-        headline: 'Women Who Added Gummies Saw Better Results',
-        subline: '92% of women reported faster vaginal pH balance when combining both',
-      }
-    }
-  };
+        fallbackTitle: 'Vaginal Probiotic Gummies',
+        fallbackPrice: 3499,
+        fallbackCompare: 5799,
+        stars: 4.6,
+        reviews: '11,800+',
+        colorClass: 'is-yellow',
+        tagline: 'Our #1 bestseller',
+      },
+      {
+        handle: 'gut-capsule',
+        fallbackTitle: 'Gut Ritual Capsules',
+        fallbackPrice: 4900,
+        fallbackCompare: 6500,
+        stars: 4.5,
+        reviews: '4,200+',
+        colorClass: 'is-rose',
+        tagline: 'For bloating & gut health',
+      },
+    ];
 
-  // ==================== STATE ====================
-  let cart = null;
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    let state = {
+      cart: null,
+      isDrawerOpen: false,
+      isLoading: false,
+      crossSellOffer: null,
+      bundleUpsell: null,
+      shippingProgress: null,
+    };
 
-  // ==================== HELPERS ====================
+    const productCache = {};
+    const listeners = [];
 
-  /**
-   * Format price using Shopify's active currency
-   * IMPORTANT: Cart API returns prices in CENTS
-   * Uses Shopify.currency.active for currency code
-   */
-  function formatMoney(cents) {
-    const amount = cents / 100;
-    try {
-      const currencyCode = window.Shopify && window.Shopify.currency
-        ? window.Shopify.currency.active
-        : 'USD';
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: currencyCode,
-      }).format(amount);
-    } catch (e) {
-      // Fallback if Intl fails
-      return '$' + amount.toFixed(2);
-    }
-  }
-
-  function getRoot() {
-    return window.Shopify && window.Shopify.routes
-      ? window.Shopify.routes.root
-      : '/';
-  }
-
-  // ==================== CART API ====================
-
-  async function fetchCart() {
-    const res = await fetch(getRoot() + 'cart.js');
-    cart = await res.json();
-    return cart;
-  }
-
-  async function addToCart(variantId, quantity, sellingPlanId) {
-    const item = { id: variantId, quantity: quantity || 1 };
-    if (sellingPlanId) item.selling_plan = sellingPlanId;
-
-    await fetch(getRoot() + 'cart/add.js', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [item] }),
-    });
-
-    await fetchCart();
-    render();
-    openDrawer();
-  }
-
-  /**
-   * IMPORTANT: Use line item KEY, not variant_id
-   * Multiple items can share variant_id with different selling plans
-   */
-  async function changeItem(lineItemKey, quantity) {
-    await fetch(getRoot() + 'cart/change.js', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: lineItemKey, quantity: quantity }),
-    });
-
-    await fetchCart();
-    render();
-  }
-
-  async function removeItem(lineItemKey) {
-    await changeItem(lineItemKey, 0);
-  }
-
-  /**
-   * Bundle upgrade: remove 1-pack, add 3-pack
-   * Preserves selling plan if subscription
-   */
-  async function upgradeToPack(currentItemKey, newVariantId, sellingPlanId) {
-    // Remove current 1-pack
-    await fetch(getRoot() + 'cart/change.js', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: currentItemKey, quantity: 0 }),
-    });
-
-    // Add 3-pack
-    const addBody = { id: newVariantId, quantity: 1 };
-    if (sellingPlanId) addBody.selling_plan = sellingPlanId;
-
-    await fetch(getRoot() + 'cart/add.js', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: [addBody] }),
-    });
-
-    await fetchCart();
-    render();
-  }
-
-  // ==================== CROSS-SELL LOGIC ====================
-
-  async function getCrossSellOffer() {
-    if (!cart || !cart.items.length) return null;
-
-    const cartHandles = cart.items.map(item => item.handle);
-
-    for (const [key, config] of Object.entries(CROSS_SELL_MAP)) {
-      const hasTrigger = config.triggerHandles.some(h => cartHandles.includes(h));
-      const alreadyInCart = cartHandles.includes(config.offer.handle);
-
-      if (hasTrigger && !alreadyInCart) {
-        try {
-          const product = await fetch(
-            getRoot() + 'products/' + config.offer.handle + '.js'
-          ).then(r => r.json());
-
-          return {
-            ...config.offer,
-            product: product,
-            variantId: product.variants[0].id,
-            image: product.featured_image,
-            title: product.title,
-            price: product.variants[0].price,
-            compareAtPrice: product.variants[0].compare_at_price,
-          };
-        } catch (e) {
-          console.warn('[NuoraCart] Cross-sell product fetch failed:', e);
-          return null;
-        }
-      }
-    }
-    return null;
-  }
-
-  // ==================== BUNDLE UPSELL LOGIC ====================
-
-  /**
-   * Works for ALL products (gummies AND gut capsules).
-   * If any line item is a 1-bottle/1-pack variant, show upgrade to 3-pack/3-bottle.
-   * Dynamically fetches the 3-pack variant from the same product.
-   */
-  async function getBundleUpsell() {
-    if (!cart || !cart.items.length) return null;
-
-    for (const item of cart.items) {
-      const variantTitle = (item.variant_title || '').toLowerCase();
-      const is1Unit = variantTitle.includes('1 bottle')
-        || variantTitle.includes('1 pack')
-        || variantTitle.includes('1-pack')
-        || variantTitle.includes('1-bottle');
-
-      if (is1Unit) {
-        // Fetch product to find the 3-pack/3-bottle variant
-        try {
-          const product = await fetch(
-            getRoot() + 'products/' + item.handle + '.js'
-          ).then(r => r.json());
-
-          const upgradeVariant = product.variants.find(v => {
-            const t = (v.title || '').toLowerCase();
-            return t.includes('3 bottle') || t.includes('3 pack')
-              || t.includes('3-pack') || t.includes('3-bottle');
-          });
-
-          if (upgradeVariant) {
-            const currentPrice = item.final_line_price;
-            const upgradePrice = upgradeVariant.price;
-            const savingsPct = upgradeVariant.compare_at_price
-              ? Math.round((1 - upgradePrice / upgradeVariant.compare_at_price) * 100)
-              : null;
-
-            return {
-              currentItem: item,
-              upgradeVariant: upgradeVariant,
-              upgradeVariantId: upgradeVariant.id,
-              message: 'Switch to 3-Pack' + (savingsPct ? ' & Save ' + savingsPct + '%' : ''),
-              subMessage: formatMoney(upgradePrice) + '/quarter vs ' + formatMoney(upgradeVariant.compare_at_price || currentPrice * 3),
-              sellingPlanId: item.selling_plan_allocation
-                ? item.selling_plan_allocation.selling_plan.id
-                : null,
-            };
-          }
-        } catch (e) {
-          console.warn('[NuoraCart] Bundle upsell fetch failed:', e);
-        }
-
-        // Fallback if fetch fails
-        return {
-          currentItem: item,
-          message: 'Upgrade to 3-Pack & Save More',
-          subMessage: 'Free shipping + bigger savings per bottle',
-        };
-      }
-    }
-    return null;
-  }
-
-  // ==================== SHIPPING PROGRESS ====================
-
-  /**
-   * Free shipping when ANY variant in cart is a 2+ pack/bottle.
-   * Two separate 1-unit products do NOT qualify.
-   * Only a multi-pack variant (2 Packs, 3 Bottles, etc.) triggers free shipping.
-   *
-   * Examples:
-   * - 1 Pack gummies + 1 Bottle capsules = NOT free (both are 1-unit variants)
-   * - 2 Packs gummies + 1 Bottle capsules = FREE (gummies is 2-pack)
-   * - 3 Bottles capsules only = FREE (3-bottle variant)
-   * - 1 Pack gummies only = NOT free
-   */
-  function hasMultiPackVariant() {
-    if (!cart || !cart.items.length) return false;
-
-    return cart.items.some(item => {
-      const variantTitle = (item.variant_title || '').toLowerCase();
-      const match = variantTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
-      const unitsPerVariant = match ? parseInt(match[1]) : 1;
-      return unitsPerVariant >= 2;
-    });
-  }
-
-  function getShippingProgress() {
-    if (!cart) return { qualified: false, percentage: 0, message: '' };
-
-    const qualified = hasMultiPackVariant();
-
-    if (qualified) {
-      return {
-        qualified: true,
-        percentage: 100,
-        message: "You've unlocked FREE shipping!",
+    // =========================================================================
+    // PUB/SUB
+    // =========================================================================
+    function subscribe(fn) {
+      listeners.push(fn);
+      return () => {
+        const idx = listeners.indexOf(fn);
+        if (idx > -1) listeners.splice(idx, 1);
       };
     }
 
-    return {
-      qualified: false,
-      percentage: 50,
-      message: 'Upgrade to 2+ packs for FREE shipping!',
-    };
-  }
-
-  // ==================== DRAWER OPEN/CLOSE ====================
-
-  function openDrawer() {
-    const drawer = document.getElementById('nuora-cart-drawer');
-    const overlay = document.getElementById('nuora-cart-overlay');
-    if (!drawer) return;
-
-    drawer.classList.add('is-open');
-    drawer.setAttribute('aria-hidden', 'false');
-    if (overlay) {
-      overlay.classList.add('is-open');
-      overlay.setAttribute('aria-hidden', 'false');
+    function notify() {
+      listeners.forEach((fn) => {
+        try { fn({ ...state }); }
+        catch (err) { console.error('[NuoraCart] Listener error:', err); }
+      });
     }
-    document.body.classList.add('nuora-cart-open');
-  }
 
-  function closeDrawer() {
-    const drawer = document.getElementById('nuora-cart-drawer');
-    const overlay = document.getElementById('nuora-cart-overlay');
-    if (!drawer) return;
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    const root = () => window.Shopify?.routes?.root || '/';
 
-    drawer.classList.remove('is-open');
-    drawer.setAttribute('aria-hidden', 'true');
-    if (overlay) {
-      overlay.classList.remove('is-open');
-      overlay.setAttribute('aria-hidden', 'true');
+    async function shopifyFetch(endpoint, options = {}) {
+      const url = root() + endpoint;
+      const res = await _origFetch(url, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`[NuoraCart] ${endpoint} failed (${res.status}): ${text}`);
+      }
+      return res.json();
     }
-    document.body.classList.remove('nuora-cart-open');
-  }
 
-  // ==================== EMPTY STATE PRODUCT SUGGESTIONS ====================
+    async function fetchProduct(handle) {
+      if (productCache[handle]) return productCache[handle];
+      const product = await shopifyFetch(`products/${handle}.js`);
+      productCache[handle] = product;
+      return product;
+    }
 
-  const SUGGESTED_PRODUCTS = [
-    {
-      handle: 'feminine-balance-gummies-1',
-      fallbackTitle: 'Vaginal Probiotic Gummies',
-      fallbackPrice: 3499, // cents
-      fallbackCompare: 5799,
-      stars: 4.6,
-      reviews: '11,800+',
-      colorClass: 'is-yellow',
-      tagline: 'Our #1 bestseller',
-    },
-    {
-      handle: 'gut-capsule',
-      fallbackTitle: 'Gut Ritual Capsules',
-      fallbackPrice: 4900, // cents
-      fallbackCompare: 6500,
-      stars: 4.5,
-      reviews: '4,200+',
-      colorClass: 'is-rose',
-      tagline: 'For bloating & gut health',
-    },
-  ];
-
-  async function renderEmptyState() {
-    const container = document.getElementById('drawerEmptyProducts');
-    if (!container) return;
-
-    let html = '';
-
-    for (const item of SUGGESTED_PRODUCTS) {
-      let title = item.fallbackTitle;
-      let price = item.fallbackPrice;
-      let compareAt = item.fallbackCompare;
-      let image = '';
-      let variantId = null;
-
-      // Try to fetch live product data
+    function formatMoney(cents) {
+      if (cents == null) return '';
+      const code = window.Shopify?.currency?.active || 'USD';
       try {
-        const product = await fetch(getRoot() + 'products/' + item.handle + '.js')
-          .then(r => r.json());
-        title = product.title;
-        price = product.variants[0].price;
-        compareAt = product.variants[0].compare_at_price || compareAt;
-        image = product.featured_image
-          ? product.featured_image.replace(/(\.[^.]+)$/, '_180x$1')
-          : '';
-        variantId = product.variants[0].id;
-      } catch (e) {
-        // Use fallbacks
+        const locale = code === 'USD' ? 'en-US' : undefined;
+        return new Intl.NumberFormat(locale, {
+          style: 'currency',
+          currency: code,
+        }).format(cents / 100);
+      } catch {
+        return `${code} ${(cents / 100).toFixed(2)}`;
       }
-
-      html += '<div class="nuora-cart-drawer__suggest-card ' + item.colorClass + '">';
-
-      // Image
-      html += '<div class="nuora-cart-drawer__suggest-img ' + (item.colorClass === 'is-rose' ? 'is-rose' : '') + '">';
-      if (image) {
-        html += '<img src="' + image + '" alt="' + title + '" loading="lazy">';
-      }
-      html += '</div>';
-
-      // Info
-      html += '<div class="nuora-cart-drawer__suggest-info">';
-      html += '<p class="nuora-cart-drawer__suggest-name">' + title + '</p>';
-      html += '<p class="nuora-cart-drawer__suggest-meta">' + item.tagline + '</p>';
-      html += '<p class="nuora-cart-drawer__suggest-stars">';
-      // Star rating
-      const fullStars = Math.floor(item.stars);
-      for (let i = 0; i < fullStars; i++) html += '&#9733;';
-      if (item.stars % 1 >= 0.5) html += '&#9733;';
-      html += ' ' + item.reviews + ' reviews</p>';
-
-      // Price
-      html += '<div class="nuora-cart-drawer__suggest-price">';
-      html += '<span class="nuora-cart-drawer__suggest-price-current">' + formatMoney(price) + '</span>';
-      if (compareAt && compareAt > price) {
-        html += '<span class="nuora-cart-drawer__suggest-price-compare">' + formatMoney(compareAt) + '</span>';
-      }
-      html += '</div>';
-
-      // Add button
-      if (variantId) {
-        html += '<button class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" data-variant-id="' + variantId + '">+ Add to Cart</button>';
-      } else {
-        html += '<a href="/products/' + item.handle + '" class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" style="text-decoration:none;text-align:center;display:inline-block;">View Product</a>';
-      }
-
-      html += '</div>'; // info
-      html += '</div>'; // card
     }
 
-    html += '<a href="/collections/all" class="nuora-cart-drawer__empty-browse">Browse all products</a>';
-
-    container.innerHTML = html;
-
-    // Bind add buttons
-    container.querySelectorAll('[data-variant-id]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const vid = parseInt(btn.dataset.variantId);
-        btn.textContent = 'Adding...';
-        await addToCart(vid, 1, null);
-      });
-    });
-  }
-
-  // ==================== RENDER ====================
-
-  async function render() {
-    if (!cart) return;
-
-    const isEmpty = cart.item_count === 0;
-
-    // Toggle empty state
-    const emptyEl = document.getElementById('drawerEmpty');
-    const itemsEl = document.getElementById('drawerItems');
-    const scrollableEl = document.getElementById('drawerScrollable');
-    const footerEl = document.querySelector('.nuora-cart-drawer__footer');
-    const crossSellEl = document.getElementById('drawerCrossSell');
-    const bundleEl = document.getElementById('drawerBundle');
-    const shippingEl = document.getElementById('drawerShipping');
-    const urgencyEl = document.getElementById('drawerUrgency');
-
-    if (emptyEl) emptyEl.style.display = isEmpty ? '' : 'none';
-    if (scrollableEl) scrollableEl.style.display = isEmpty ? 'none' : '';
-    if (footerEl) footerEl.style.display = isEmpty ? 'none' : '';
-    if (shippingEl) shippingEl.style.display = isEmpty ? 'none' : '';
-    if (urgencyEl) urgencyEl.style.display = isEmpty ? 'none' : '';
-
-    // Cart count
-    const countEl = document.getElementById('drawerCartCount');
-    if (countEl) countEl.textContent = '(' + cart.item_count + ')';
-
-    // Update all cart badges sitewide
-    document.querySelectorAll('[data-cart-count]').forEach(el => {
-      el.textContent = cart.item_count;
-      el.style.display = cart.item_count > 0 ? '' : 'none';
-    });
-
-    if (isEmpty) {
-      if (crossSellEl) crossSellEl.style.display = 'none';
-      if (bundleEl) bundleEl.style.display = 'none';
-      renderEmptyState();
-      return;
+    function getProductImageUrl(url, size) {
+      if (!url) return '';
+      size = size || '180x';
+      return url.replace(/(\.[^.]+)$/, '_' + size + '$1');
     }
 
-    // ---- Line Items ----
-    if (itemsEl) {
-      let html = '';
-      cart.items.forEach(item => {
-        const hasSubscription = !!item.selling_plan_allocation;
-        let planName = '';
-        let savingsText = '';
+    // =========================================================================
+    // DESIGN ROUTER - reads which design is active
+    // =========================================================================
+    function getActiveDesign() {
+      return document.body.dataset.cartDesign || 'a';
+    }
 
-        if (hasSubscription) {
-          const plan = item.selling_plan_allocation.selling_plan;
-          planName = plan.name || 'Subscription';
-          const priceAdj = item.selling_plan_allocation.price_adjustments[0];
-          if (priceAdj && priceAdj.compare_at_price > priceAdj.price) {
-            const savingsPct = Math.round((1 - priceAdj.price / priceAdj.compare_at_price) * 100);
-            savingsText = 'Saves ' + savingsPct + '% every order';
-          }
-        }
+    // =========================================================================
+    // SELLING PLAN - reads compare_at_price from allocation level (our fix)
+    // =========================================================================
+    function getSellingPlanInfo(item) {
+      if (!item.selling_plan_allocation) return null;
 
-        const linePrice = item.final_line_price;
-        const comparePrice = item.original_line_price;
-        const imgSrc = item.image
-          ? item.image.replace(/(\.[^.]+)$/, '_180x$1')
-          : '';
+      const spa = item.selling_plan_allocation;
+      const plan = spa.selling_plan;
+      const perDelivery = spa.per_delivery_price;
+      const compareAt = spa.compare_at_price || 0;
 
-        html += '<div class="nuora-cart-drawer__item">';
+      let savingsPercent = 0;
+      if (compareAt > 0 && perDelivery < compareAt) {
+        savingsPercent = Math.round((1 - perDelivery / compareAt) * 100);
+      }
 
-        // Image
-        html += '<div class="nuora-cart-drawer__item-img">';
-        if (imgSrc) {
-          html += '<img src="' + imgSrc + '" alt="' + item.product_title + '" loading="lazy">';
-        }
-        html += '</div>';
+      let displayName = plan.name || '';
+      displayName = displayName.replace(/^Delivery:?\s*/i, '').trim();
+      if (!displayName) displayName = plan.name;
 
-        // Details
-        html += '<div class="nuora-cart-drawer__item-details">';
-        html += '<p class="nuora-cart-drawer__item-name">' + item.product_title + '</p>';
-        if (item.variant_title) {
-          html += '<p class="nuora-cart-drawer__item-variant">Variant: ' + item.variant_title + '</p>';
-        }
-        if (planName) {
-          html += '<p class="nuora-cart-drawer__item-plan">' + planName + '</p>';
-        }
-        if (savingsText) {
-          html += '<p class="nuora-cart-drawer__item-savings">' + savingsText + '</p>';
-        }
+      return {
+        planName: plan.name,
+        planId: plan.id,
+        displayName,
+        perDeliveryPrice: perDelivery,
+        compareAtPrice: compareAt,
+        savingsPercent,
+      };
+    }
 
-        // Bottom row: qty + price
-        html += '<div class="nuora-cart-drawer__item-bottom">';
-        html += '<div class="nuora-cart-drawer__item-actions">';
-
-        // Qty control
-        html += '<div class="nuora-cart-drawer__qty">';
-        html += '<button class="nuora-cart-drawer__qty-btn" data-action="decrease" data-key="' + item.key + '">-</button>';
-        html += '<span class="nuora-cart-drawer__qty-value">' + item.quantity + '</span>';
-        html += '<button class="nuora-cart-drawer__qty-btn" data-action="increase" data-key="' + item.key + '">+</button>';
-        html += '</div>';
-
-        // Remove
-        html += '<button class="nuora-cart-drawer__remove" data-action="remove" data-key="' + item.key + '">Remove</button>';
-        html += '</div>'; // actions
-
-        // Price
-        html += '<div class="nuora-cart-drawer__item-price">';
-        html += '<div class="nuora-cart-drawer__price-current">' + formatMoney(linePrice) + '</div>';
-        if (comparePrice > linePrice) {
-          html += '<div class="nuora-cart-drawer__price-compare">' + formatMoney(comparePrice) + '</div>';
-        }
-        html += '</div>'; // price
-
-        html += '</div>'; // bottom
-        html += '</div>'; // details
-        html += '</div>'; // item
+    // =========================================================================
+    // FREE SHIPPING - multi-pack variant logic (Hardik update)
+    // NOT dollar-based. Free when any variant is 2+ packs/bottles.
+    // =========================================================================
+    function hasMultiPackVariant(cartItems) {
+      if (!cartItems || !cartItems.length) return false;
+      return cartItems.some(function(item) {
+        var vt = (item.variant_title || '').toLowerCase();
+        var match = vt.match(/(\d+)\s*(bottle|pack|capsule)/);
+        var units = match ? parseInt(match[1]) : 1;
+        return units >= 2;
       });
+    }
 
-      itemsEl.innerHTML = html;
+    function getShippingProgress(cartItems) {
+      if (hasMultiPackVariant(cartItems)) {
+        return {
+          qualified: true,
+          percentage: 100,
+          message: "You've unlocked FREE shipping!",
+        };
+      }
+      return {
+        qualified: false,
+        percentage: 50,
+        message: 'Upgrade to 2+ packs for FREE shipping!',
+      };
+    }
 
-      // Bind qty/remove buttons
-      itemsEl.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          const key = btn.dataset.key;
-          const action = btn.dataset.action;
-          const item = cart.items.find(i => i.key === key);
-          if (!item) return;
-
-          if (action === 'remove') {
-            await removeItem(key);
-          } else if (action === 'decrease' && item.quantity > 1) {
-            await changeItem(key, item.quantity - 1);
-          } else if (action === 'increase') {
-            await changeItem(key, item.quantity + 1);
+    // =========================================================================
+    // CROSS-SELL
+    // =========================================================================
+    async function getCrossSellOffer(cartItems) {
+      var cartHandles = cartItems.map(function(item) { return item.handle; });
+      for (var key in CROSS_SELL_MAP) {
+        var config = CROSS_SELL_MAP[key];
+        var hasTrigger = config.triggerHandles.some(function(h) { return cartHandles.indexOf(h) !== -1; });
+        var alreadyInCart = cartHandles.indexOf(config.offer.handle) !== -1;
+        if (hasTrigger && !alreadyInCart) {
+          try {
+            var product = await fetchProduct(config.offer.handle);
+            var variant = product.variants[0];
+            return {
+              headline: config.offer.headline,
+              subline: config.offer.subline,
+              handle: config.offer.handle,
+              product: product,
+              variantId: variant.id,
+              image: product.featured_image,
+              title: product.title,
+              price: variant.price,
+              compareAtPrice: variant.compare_at_price,
+            };
+          } catch (err) {
+            console.warn('[NuoraCart] Cross-sell fetch failed:', err);
+            return null;
           }
+        }
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // BUNDLE UPSELL - works for ALL products, includes free shipping note
+    // =========================================================================
+    async function getBundleUpsell(cartItems) {
+      for (var i = 0; i < cartItems.length; i++) {
+        var item = cartItems[i];
+        var vt = (item.variant_title || '').toLowerCase();
+        var is1Unit = vt.includes('1 bottle') || vt.includes('1 pack') || vt.includes('1-pack') || vt.includes('1-bottle') || vt === '1 packs';
+
+        if (is1Unit) {
+          try {
+            var product = await fetchProduct(item.handle);
+            var upgradeVariant = product.variants.find(function(v) {
+              var t = (v.title || '').toLowerCase();
+              return t.includes('3 bottle') || t.includes('3 pack') || t.includes('3-pack') || t.includes('3-bottle') || t === '3 packs';
+            });
+
+            if (upgradeVariant) {
+              var savingsPct = upgradeVariant.compare_at_price
+                ? Math.round((1 - upgradeVariant.price / upgradeVariant.compare_at_price) * 100)
+                : 0;
+
+              // Check if upgrade variant qualifies for free shipping
+              var upgradeTitle = (upgradeVariant.title || '').toLowerCase();
+              var upgradeMatch = upgradeTitle.match(/(\d+)\s*(bottle|pack|capsule)/);
+              var upgradeUnits = upgradeMatch ? parseInt(upgradeMatch[1]) : 1;
+              var freeShipNote = upgradeUnits >= 2 ? ' + FREE shipping' : '';
+
+              return {
+                currentItem: item,
+                currentItemKey: item.key,
+                upgradeVariantId: upgradeVariant.id,
+                sellingPlanId: item.selling_plan_allocation
+                  ? item.selling_plan_allocation.selling_plan.id
+                  : null,
+                message: 'Switch to ' + upgradeVariant.title + (savingsPct > 0 ? ' & Save ' + savingsPct + '%' : ''),
+                subMessage: formatMoney(upgradeVariant.price) + ' vs ' + formatMoney(upgradeVariant.compare_at_price || item.final_price * 3) + freeShipNote,
+              };
+            }
+          } catch (err) {
+            console.warn('[NuoraCart] Bundle fetch failed:', err);
+          }
+        }
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // TOTAL SAVINGS - uses allocation-level compare_at_price (our fix)
+    // =========================================================================
+    function calculateTotalSavings(cart) {
+      var savings = 0;
+      cart.items.forEach(function(item) {
+        if (item.original_line_price > item.final_line_price) {
+          savings += item.original_line_price - item.final_line_price;
+        } else if (item.selling_plan_allocation) {
+          var compareAt = item.selling_plan_allocation.compare_at_price || 0;
+          var perDelivery = item.selling_plan_allocation.per_delivery_price || 0;
+          if (compareAt > perDelivery) {
+            savings += (compareAt - perDelivery) * item.quantity;
+          }
+        }
+      });
+      return savings;
+    }
+
+    // =========================================================================
+    // CART BADGE
+    // =========================================================================
+    function updateCartBadge(count) {
+      document.querySelectorAll('[data-cart-count]').forEach(function(el) {
+        el.textContent = count;
+        el.style.display = count > 0 ? '' : 'none';
+      });
+    }
+
+    // =========================================================================
+    // CORE CART ACTIONS
+    // =========================================================================
+    async function refresh() {
+      try {
+        state.cart = await shopifyFetch('cart.js');
+        state.crossSellOffer = await getCrossSellOffer(state.cart.items);
+        state.bundleUpsell = await getBundleUpsell(state.cart.items);
+        state.shippingProgress = getShippingProgress(state.cart.items);
+        updateCartBadge(state.cart.item_count);
+        notify();
+      } catch (err) {
+        console.error('[NuoraCart] Refresh failed:', err);
+      }
+    }
+
+    async function addToCart(variantId, quantity, sellingPlan) {
+      state.isLoading = true;
+      notify();
+      try {
+        var body = { items: [{ id: variantId, quantity: quantity || 1 }] };
+        if (sellingPlan) body.items[0].selling_plan = sellingPlan;
+        await shopifyFetch('cart/add.js', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        await refresh();
+      } catch (err) {
+        console.error('[NuoraCart] addToCart failed:', err);
+      } finally {
+        state.isLoading = false;
+        notify();
+      }
+    }
+
+    async function changeItem(lineItemKey, quantity) {
+      state.isLoading = true;
+      notify();
+      try {
+        await shopifyFetch('cart/change.js', {
+          method: 'POST',
+          body: JSON.stringify({ id: lineItemKey, quantity: quantity }),
+        });
+        await refresh();
+      } catch (err) {
+        console.error('[NuoraCart] changeItem failed:', err);
+      } finally {
+        state.isLoading = false;
+        notify();
+      }
+    }
+
+    async function removeItem(lineItemKey) {
+      return changeItem(lineItemKey, 0);
+    }
+
+    async function upgradeToPack(currentItemKey, newVariantId, sellingPlanId) {
+      state.isLoading = true;
+      notify();
+      try {
+        await shopifyFetch('cart/change.js', {
+          method: 'POST',
+          body: JSON.stringify({ id: currentItemKey, quantity: 0 }),
+        });
+        var body = { items: [{ id: newVariantId, quantity: 1 }] };
+        if (sellingPlanId) body.items[0].selling_plan = sellingPlanId;
+        await shopifyFetch('cart/add.js', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        await refresh();
+      } catch (err) {
+        console.error('[NuoraCart] upgradeToPack failed:', err);
+      } finally {
+        state.isLoading = false;
+        notify();
+      }
+    }
+
+    // =========================================================================
+    // DRAWER CONTROLS
+    // =========================================================================
+    function openDrawer() {
+      state.isDrawerOpen = true;
+      document.body.classList.add('nuora-cart-open');
+      var overlay = document.getElementById('nuora-cart-overlay');
+      var drawer = document.getElementById('nuora-cart-drawer');
+      if (overlay) { overlay.classList.add('is-open'); overlay.setAttribute('aria-hidden', 'false'); }
+      if (drawer) { drawer.classList.add('is-open'); drawer.setAttribute('aria-hidden', 'false'); }
+      notify();
+    }
+
+    function closeDrawer() {
+      state.isDrawerOpen = false;
+      document.body.classList.remove('nuora-cart-open');
+      var overlay = document.getElementById('nuora-cart-overlay');
+      var drawer = document.getElementById('nuora-cart-drawer');
+      if (overlay) { overlay.classList.remove('is-open'); overlay.setAttribute('aria-hidden', 'true'); }
+      if (drawer) { drawer.classList.remove('is-open'); drawer.setAttribute('aria-hidden', 'true'); }
+      notify();
+    }
+
+    function goToCheckout() {
+      window.location.href = '/checkout';
+    }
+
+    // =========================================================================
+    // RENDER - LINE ITEM B (Design B - full custom cart)
+    // =========================================================================
+    function renderLineItemB(item) {
+      var planInfo = getSellingPlanInfo(item);
+      var imgSrc = getProductImageUrl(item.image || (item.featured_image && item.featured_image.url), '180x');
+      var linePrice = item.final_line_price;
+
+      var comparePrice = 0;
+      if (item.selling_plan_allocation && item.selling_plan_allocation.compare_at_price > 0) {
+        comparePrice = item.selling_plan_allocation.compare_at_price * item.quantity;
+      } else if (item.original_line_price > linePrice) {
+        comparePrice = item.original_line_price;
+      }
+
+      var planHtml = '';
+      if (planInfo) {
+        planHtml = '<p class="nuora-cart-drawer__item-plan">' + planInfo.displayName + '</p>';
+        if (planInfo.savingsPercent > 0) {
+          planHtml += '<p class="nuora-cart-drawer__item-savings">Saves ' + planInfo.savingsPercent + '% every order</p>';
+        }
+      }
+
+      var html = '<div class="nuora-cart-drawer__item">';
+      html += '<div class="nuora-cart-drawer__item-img"><img src="' + imgSrc + '" alt="' + item.product_title + '" loading="lazy"></div>';
+      html += '<div class="nuora-cart-drawer__item-details">';
+      html += '<p class="nuora-cart-drawer__item-name">' + item.product_title + '</p>';
+      if (item.variant_title) {
+        html += '<p class="nuora-cart-drawer__item-variant">Variant: ' + item.variant_title + '</p>';
+      }
+      html += planHtml;
+      html += '<div class="nuora-cart-drawer__item-bottom">';
+      html += '<div class="nuora-cart-drawer__item-actions">';
+      html += '<div class="nuora-cart-drawer__qty">';
+      html += '<button class="nuora-cart-drawer__qty-btn" data-action="decrease" data-key="' + item.key + '">-</button>';
+      html += '<span class="nuora-cart-drawer__qty-value">' + item.quantity + '</span>';
+      html += '<button class="nuora-cart-drawer__qty-btn" data-action="increase" data-key="' + item.key + '">+</button>';
+      html += '</div>';
+      html += '<button class="nuora-cart-drawer__remove" data-action="remove" data-key="' + item.key + '">Remove</button>';
+      html += '</div>';
+      html += '<div class="nuora-cart-drawer__item-price">';
+      html += '<div class="nuora-cart-drawer__price-current">' + formatMoney(linePrice) + '</div>';
+      if (comparePrice > 0) {
+        html += '<div class="nuora-cart-drawer__price-compare">' + formatMoney(comparePrice) + '</div>';
+      }
+      html += '</div></div></div></div>';
+      return html;
+    }
+
+    // =========================================================================
+    // RENDER - LINE ITEM A (Design A - UpCart-like simplified)
+    // =========================================================================
+    function renderLineItemA(item) {
+      var imgSrc = getProductImageUrl(item.image || (item.featured_image && item.featured_image.url), '180x');
+      var linePrice = item.final_line_price;
+
+      var comparePrice = 0;
+      if (item.selling_plan_allocation && item.selling_plan_allocation.compare_at_price > 0) {
+        comparePrice = item.selling_plan_allocation.compare_at_price * item.quantity;
+      } else if (item.original_line_price > linePrice) {
+        comparePrice = item.original_line_price;
+      }
+
+      var savedAmount = comparePrice > linePrice ? comparePrice - linePrice : 0;
+
+      // Multi-pack badge
+      var badgeHtml = '';
+      var vt = (item.variant_title || '').toLowerCase();
+      var packMatch = vt.match(/(\d+)\s*(bottle|pack)/i);
+      if (packMatch) {
+        var packCount = parseInt(packMatch[1]);
+        if (packCount >= 2) {
+          var packLabel = packMatch[2].toUpperCase() + 'S';
+          badgeHtml = '<span class="nuora-cart-drawer__item-badge">' + packCount + ' ' + packLabel + '</span>';
+        }
+      }
+
+      var html = '<div class="nuora-cart-drawer__item nuora-cart-drawer__item--design-a">';
+      html += '<div class="nuora-cart-drawer__item-img"><img src="' + imgSrc + '" alt="' + item.product_title + '" loading="lazy"></div>';
+      html += '<div class="nuora-cart-drawer__item-details">';
+      html += '<div class="nuora-cart-drawer__item-top-row">';
+      html += '<p class="nuora-cart-drawer__item-name">' + item.product_title + '</p>';
+      html += '<button class="nuora-cart-drawer__trash-btn" data-action="remove" data-key="' + item.key + '" aria-label="Remove item">';
+      html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4m2 0v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4h9.34z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      html += '</button>';
+      html += '</div>';
+      if (badgeHtml) {
+        html += badgeHtml;
+      }
+      html += '<div class="nuora-cart-drawer__item-price-row">';
+      if (comparePrice > 0) {
+        html += '<span class="nuora-cart-drawer__price-compare">' + formatMoney(comparePrice) + '</span> ';
+      }
+      html += '<span class="nuora-cart-drawer__price-current">' + formatMoney(linePrice) + '</span>';
+      html += '</div>';
+      if (savedAmount > 0) {
+        html += '<p class="nuora-cart-drawer__item-you-saved">(You saved ' + formatMoney(savedAmount) + ')</p>';
+      }
+      html += '</div></div>';
+      return html;
+    }
+
+    // =========================================================================
+    // RENDER - FOOTER A (Design A - UpCart-like simplified)
+    // =========================================================================
+    function renderFooterA(cart) {
+      var totalSavings = calculateTotalSavings(cart);
+
+      var html = '';
+
+      if (totalSavings > 0) {
+        html += '<div class="nuora-cart-drawer__footer-discount-row">';
+        html += '<span class="nuora-cart-drawer__footer-discount-label">Discounts</span>';
+        html += '<span class="nuora-cart-drawer__footer-discount-value">- ' + formatMoney(totalSavings) + '</span>';
+        html += '</div>';
+      }
+
+      html += '<button class="nuora-cart-drawer__secure-checkout-btn" id="drawerCheckoutA">';
+      html += 'SECURE CHECKOUT';
+      html += '</button>';
+
+      html += '<div class="nuora-cart-drawer__guarantee">';
+      html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33L2.67 3.33v4a6.67 6.67 0 005.33 6.54 6.67 6.67 0 005.33-6.54v-4L8 1.33z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      html += '<span>30 Day Money Back Guarantee</span>';
+      html += '</div>';
+
+      return html;
+    }
+
+    // =========================================================================
+    // RENDER - EMPTY STATE with product suggestions (Hardik update)
+    // =========================================================================
+    async function renderEmptyState() {
+      var container = document.getElementById('drawerEmptyProducts');
+      if (!container) return;
+
+      var html = '';
+      for (var i = 0; i < SUGGESTED_PRODUCTS.length; i++) {
+        var item = SUGGESTED_PRODUCTS[i];
+        var title = item.fallbackTitle;
+        var price = item.fallbackPrice;
+        var compareAt = item.fallbackCompare;
+        var image = '';
+        var variantId = null;
+
+        try {
+          var product = await fetchProduct(item.handle);
+          title = product.title;
+          price = product.variants[0].price;
+          compareAt = product.variants[0].compare_at_price || compareAt;
+          image = product.featured_image ? getProductImageUrl(product.featured_image, '180x') : '';
+          variantId = product.variants[0].id;
+        } catch (e) {}
+
+        html += '<div class="nuora-cart-drawer__suggest-card ' + item.colorClass + '">';
+        html += '<div class="nuora-cart-drawer__suggest-img ' + (item.colorClass === 'is-rose' ? 'is-rose' : '') + '">';
+        if (image) html += '<img src="' + image + '" alt="' + title + '" loading="lazy">';
+        html += '</div>';
+        html += '<div class="nuora-cart-drawer__suggest-info">';
+        html += '<p class="nuora-cart-drawer__suggest-name">' + title + '</p>';
+        html += '<p class="nuora-cart-drawer__suggest-meta">' + item.tagline + '</p>';
+        html += '<p class="nuora-cart-drawer__suggest-stars">';
+        var fullStars = Math.floor(item.stars);
+        for (var s = 0; s < fullStars; s++) html += '&#9733;';
+        if (item.stars % 1 >= 0.5) html += '&#9733;';
+        html += ' ' + item.reviews + ' reviews</p>';
+        html += '<div class="nuora-cart-drawer__suggest-price">';
+        html += '<span class="nuora-cart-drawer__suggest-price-current">' + formatMoney(price) + '</span>';
+        if (compareAt && compareAt > price) {
+          html += '<span class="nuora-cart-drawer__suggest-price-compare">' + formatMoney(compareAt) + '</span>';
+        }
+        html += '</div>';
+        if (variantId) {
+          html += '<button class="nuora-cart-drawer__suggest-add ' + item.colorClass + '" data-variant-id="' + variantId + '">+ Add to Cart</button>';
+        }
+        html += '</div></div>';
+      }
+
+      html += '<a href="/pages/shop-all" class="nuora-cart-drawer__empty-browse">Browse all products</a>';
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-variant-id]').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          var vid = parseInt(btn.dataset.variantId);
+          btn.textContent = 'Adding...';
+          await addToCart(vid, 1, null);
         });
       });
     }
 
-    // ---- Shipping Bar ----
-    const shipping = getShippingProgress();
-    const shippingTextEl = document.getElementById('drawerShippingText');
-    const shippingFillEl = document.getElementById('drawerShippingFill');
+    // =========================================================================
+    // RENDER - DRAWER A (Design A - UpCart-like orchestrator)
+    // =========================================================================
+    async function renderDrawerA(currentState) {
+      var cart = currentState.cart;
+      if (!cart) return;
 
-    if (shippingTextEl) {
-      shippingTextEl.textContent = shipping.message;
-      shippingTextEl.classList.toggle('is-qualified', shipping.qualified);
-    }
-    if (shippingFillEl) {
-      shippingFillEl.style.width = shipping.percentage + '%';
-      shippingFillEl.classList.toggle('is-qualified', shipping.qualified);
-    }
+      var drawer = document.getElementById('nuora-cart-drawer');
+      if (!drawer) return;
 
-    // ---- Subtotal / Total ----
-    const subtotalEl = document.getElementById('drawerSubtotal');
-    const totalEl = document.getElementById('drawerTotal');
-    const checkoutTotalEl = document.getElementById('drawerCheckoutTotal');
-    const shippingCostEl = document.getElementById('drawerShippingCost');
-    const savingsEl = document.getElementById('drawerSavings');
+      drawer.classList.toggle('is-loading', currentState.isLoading);
+      var isEmpty = cart.item_count === 0;
 
-    if (subtotalEl) subtotalEl.textContent = formatMoney(cart.total_price);
-    if (totalEl) totalEl.textContent = formatMoney(cart.total_price);
-    if (checkoutTotalEl) checkoutTotalEl.textContent = formatMoney(cart.total_price);
-    if (shippingCostEl) {
-      shippingCostEl.textContent = shipping.qualified ? 'FREE' : 'Calculated at checkout';
-    }
+      // Toggle sections
+      var emptyEl = document.getElementById('drawerEmpty');
+      var scrollableEl = document.getElementById('drawerScrollable');
+      var footerEl = drawer.querySelector('.nuora-cart-drawer__footer');
+      var shippingEl = document.getElementById('drawerShipping');
+      var urgencyEl = document.getElementById('drawerUrgency');
+      var crossSellEl = document.getElementById('drawerCrossSell');
+      var bundleEl = document.getElementById('drawerBundle');
 
-    // Savings
-    const totalSavings = cart.original_total_price - cart.total_price;
-    if (savingsEl) {
-      if (totalSavings > 0) {
-        savingsEl.textContent = "You're saving " + formatMoney(totalSavings) + ' on your wellness routine';
-        savingsEl.style.display = '';
-      } else {
-        savingsEl.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = isEmpty ? '' : 'none';
+      if (scrollableEl) scrollableEl.style.display = isEmpty ? 'none' : '';
+      if (footerEl) footerEl.style.display = isEmpty ? 'none' : '';
+
+      // Design A always hides shipping bar, cross-sell, bundle upsell
+      if (shippingEl) shippingEl.style.display = 'none';
+      if (crossSellEl) crossSellEl.style.display = 'none';
+      if (bundleEl) bundleEl.style.display = 'none';
+
+      // Urgency timer stays visible (same as Design B)
+      if (urgencyEl) urgencyEl.style.display = isEmpty ? 'none' : '';
+
+      // Cart count
+      var countEl = document.getElementById('drawerCartCount');
+      if (countEl) countEl.textContent = '(' + cart.item_count + ')';
+      updateCartBadge(cart.item_count);
+
+      if (isEmpty) {
+        renderEmptyState();
+        return;
       }
-    }
 
-    // ---- Cross-sell ----
-    const offer = await getCrossSellOffer();
-    if (crossSellEl) {
-      if (offer) {
-        crossSellEl.style.display = '';
-        const cardEl = document.getElementById('drawerCrossSellCard');
-        if (cardEl) {
-          let csHtml = '';
-          csHtml += '<div class="nuora-cart-drawer__cross-sell-img">';
-          if (offer.image) csHtml += '<img src="' + offer.image + '" alt="' + offer.title + '" loading="lazy">';
-          csHtml += '</div>';
-          csHtml += '<div class="nuora-cart-drawer__cross-sell-info">';
-          csHtml += '<p class="nuora-cart-drawer__cross-sell-name">' + offer.title + '</p>';
-          csHtml += '<p class="nuora-cart-drawer__cross-sell-price">' + formatMoney(offer.price);
-          if (offer.compareAtPrice && offer.compareAtPrice > offer.price) {
-            csHtml += ' <span class="strike">' + formatMoney(offer.compareAtPrice) + '</span>';
-          }
-          csHtml += '</p></div>';
-          csHtml += '<button class="nuora-cart-drawer__cross-sell-add" id="crossSellAddBtn">+ Add</button>';
-          cardEl.innerHTML = csHtml;
+      // Line items
+      var itemsEl = document.getElementById('drawerItems');
+      if (itemsEl) {
+        itemsEl.innerHTML = cart.items.map(renderLineItemA).join('');
 
-          // Bind add button
-          const addBtn = document.getElementById('crossSellAddBtn');
-          if (addBtn) {
-            addBtn.addEventListener('click', () => {
-              addToCart(offer.variantId, 1, null);
-            });
-          }
+        itemsEl.querySelectorAll('[data-action]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var key = btn.dataset.key;
+            var action = btn.dataset.action;
+            if (action === 'remove') await removeItem(key);
+          });
+        });
+      }
+
+      // Footer - replace innerHTML entirely with Design A footer
+      if (footerEl) {
+        footerEl.innerHTML = renderFooterA(cart);
+
+        // Bind checkout button for Design A
+        var checkoutBtnA = document.getElementById('drawerCheckoutA');
+        if (checkoutBtnA) {
+          checkoutBtnA.addEventListener('click', goToCheckout);
         }
-      } else {
-        crossSellEl.style.display = 'none';
       }
     }
 
-    // ---- Bundle Upsell ----
-    const bundle = await getBundleUpsell();
-    if (bundleEl) {
-      if (bundle) {
-        bundleEl.style.display = '';
-        const bundleCardEl = document.getElementById('drawerBundleCard');
-        if (bundleCardEl) {
-          let bHtml = '<div>';
-          bHtml += '<p class="nuora-cart-drawer__bundle-title">' + bundle.message + '</p>';
-          if (bundle.subMessage) {
-            bHtml += '<p class="nuora-cart-drawer__bundle-sub">' + bundle.subMessage + '</p>';
-          }
-          bHtml += '</div>';
+    // =========================================================================
+    // RENDER - DRAWER B (Design B - full custom cart with all features)
+    // =========================================================================
+    async function renderDrawerB(currentState) {
+      var cart = currentState.cart;
+      if (!cart) return;
 
-          if (bundle.upgradeVariantId) {
+      var drawer = document.getElementById('nuora-cart-drawer');
+      if (!drawer) return;
+
+      drawer.classList.toggle('is-loading', currentState.isLoading);
+      var isEmpty = cart.item_count === 0;
+
+      // Toggle sections
+      var emptyEl = document.getElementById('drawerEmpty');
+      var scrollableEl = document.getElementById('drawerScrollable');
+      var footerEl = drawer.querySelector('.nuora-cart-drawer__footer');
+      var shippingEl = document.getElementById('drawerShipping');
+      var urgencyEl = document.getElementById('drawerUrgency');
+      var crossSellEl = document.getElementById('drawerCrossSell');
+      var bundleEl = document.getElementById('drawerBundle');
+
+      if (emptyEl) emptyEl.style.display = isEmpty ? '' : 'none';
+      if (scrollableEl) scrollableEl.style.display = isEmpty ? 'none' : '';
+      if (footerEl) footerEl.style.display = isEmpty ? 'none' : '';
+      if (shippingEl) shippingEl.style.display = isEmpty ? 'none' : '';
+      if (urgencyEl) urgencyEl.style.display = isEmpty ? 'none' : '';
+
+      // Cart count
+      var countEl = document.getElementById('drawerCartCount');
+      if (countEl) countEl.textContent = '(' + cart.item_count + ')';
+      updateCartBadge(cart.item_count);
+
+      if (isEmpty) {
+        if (crossSellEl) crossSellEl.style.display = 'none';
+        if (bundleEl) bundleEl.style.display = 'none';
+        renderEmptyState();
+        return;
+      }
+
+      // Line items
+      var itemsEl = document.getElementById('drawerItems');
+      if (itemsEl) {
+        itemsEl.innerHTML = cart.items.map(renderLineItemB).join('');
+
+        itemsEl.querySelectorAll('[data-action]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var key = btn.dataset.key;
+            var action = btn.dataset.action;
+            var item = cart.items.find(function(i) { return i.key === key; });
+            if (!item) return;
+            if (action === 'remove') await removeItem(key);
+            else if (action === 'decrease' && item.quantity > 1) await changeItem(key, item.quantity - 1);
+            else if (action === 'increase') await changeItem(key, item.quantity + 1);
+          });
+        });
+      }
+
+      // Shipping bar
+      var shipping = currentState.shippingProgress;
+      var shippingTextEl = document.getElementById('drawerShippingText');
+      var shippingFillEl = document.getElementById('drawerShippingFill');
+      if (shippingTextEl) {
+        shippingTextEl.textContent = shipping.message;
+        shippingTextEl.classList.toggle('is-qualified', shipping.qualified);
+      }
+      if (shippingFillEl) {
+        shippingFillEl.style.width = shipping.percentage + '%';
+        shippingFillEl.classList.toggle('is-qualified', shipping.qualified);
+      }
+
+      // Footer
+      var subtotalEl = document.getElementById('drawerSubtotal');
+      var totalEl = document.getElementById('drawerTotal');
+      var checkoutTotalEl = document.getElementById('drawerCheckoutTotal');
+      var shippingCostEl = document.getElementById('drawerShippingCost');
+      var savingsEl = document.getElementById('drawerSavings');
+
+      if (subtotalEl) subtotalEl.textContent = formatMoney(cart.total_price);
+      if (totalEl) totalEl.textContent = formatMoney(cart.total_price);
+      if (checkoutTotalEl) checkoutTotalEl.textContent = formatMoney(cart.total_price);
+      if (shippingCostEl) shippingCostEl.textContent = shipping.qualified ? 'FREE' : 'Calculated at checkout';
+
+      var totalSavings = calculateTotalSavings(cart);
+      if (savingsEl) {
+        if (totalSavings > 0) {
+          savingsEl.textContent = "You're saving " + formatMoney(totalSavings) + ' on your wellness routine';
+          savingsEl.style.display = '';
+        } else {
+          savingsEl.style.display = 'none';
+        }
+      }
+
+      // Cross-sell
+      var offer = currentState.crossSellOffer;
+      if (crossSellEl) {
+        if (offer) {
+          crossSellEl.style.display = '';
+          var headlineEl = crossSellEl.querySelector('.nuora-cart-drawer__section-title');
+          if (headlineEl) headlineEl.textContent = offer.headline;
+          var cardEl = document.getElementById('drawerCrossSellCard');
+          if (cardEl) {
+            var csImg = offer.image ? getProductImageUrl(offer.image, '120x') : '';
+            var csHtml = '<div class="nuora-cart-drawer__cross-sell-img">';
+            if (csImg) csHtml += '<img src="' + csImg + '" alt="' + offer.title + '" loading="lazy">';
+            csHtml += '</div>';
+            csHtml += '<div class="nuora-cart-drawer__cross-sell-info">';
+            csHtml += '<p class="nuora-cart-drawer__cross-sell-name">' + offer.title + '</p>';
+            csHtml += '<p class="nuora-cart-drawer__cross-sell-price">' + formatMoney(offer.price);
+            if (offer.compareAtPrice && offer.compareAtPrice > offer.price) {
+              csHtml += ' <span class="strike">' + formatMoney(offer.compareAtPrice) + '</span>';
+            }
+            csHtml += '</p></div>';
+            csHtml += '<button class="nuora-cart-drawer__cross-sell-add" id="crossSellAddBtn">+ ADD</button>';
+            cardEl.innerHTML = csHtml;
+
+            var addBtn = document.getElementById('crossSellAddBtn');
+            if (addBtn) {
+              addBtn.addEventListener('click', function() {
+                addToCart(offer.variantId, 1, null);
+              });
+            }
+          }
+        } else {
+          crossSellEl.style.display = 'none';
+        }
+      }
+
+      // Bundle upsell
+      var bundle = currentState.bundleUpsell;
+      if (bundleEl) {
+        if (bundle && bundle.upgradeVariantId) {
+          bundleEl.style.display = '';
+          var bundleCardEl = document.getElementById('drawerBundleCard');
+          if (bundleCardEl) {
+            var bHtml = '<div>';
+            bHtml += '<p class="nuora-cart-drawer__bundle-title">' + bundle.message + '</p>';
+            if (bundle.subMessage) bHtml += '<p class="nuora-cart-drawer__bundle-sub">' + bundle.subMessage + '</p>';
+            bHtml += '</div>';
             bHtml += '<button class="nuora-cart-drawer__bundle-btn" id="bundleUpgradeBtn">Upgrade</button>';
-          }
+            bundleCardEl.innerHTML = bHtml;
 
-          bundleCardEl.innerHTML = bHtml;
-
-          // Bind upgrade button
-          const upgradeBtn = document.getElementById('bundleUpgradeBtn');
-          if (upgradeBtn && bundle.upgradeVariantId) {
-            upgradeBtn.addEventListener('click', async () => {
-              upgradeBtn.textContent = 'Upgrading...';
-              await upgradeToPack(
-                bundle.currentItem.key,
-                bundle.upgradeVariantId,
-                bundle.sellingPlanId
-              );
-            });
+            var upgradeBtn = document.getElementById('bundleUpgradeBtn');
+            if (upgradeBtn) {
+              upgradeBtn.addEventListener('click', async function() {
+                upgradeBtn.textContent = 'Upgrading...';
+                await upgradeToPack(bundle.currentItemKey, bundle.upgradeVariantId, bundle.sellingPlanId);
+              });
+            }
           }
+        } else {
+          bundleEl.style.display = 'none';
         }
-      } else {
-        bundleEl.style.display = 'none';
       }
     }
-  }
 
-  // ==================== CHECKOUT ====================
+    // =========================================================================
+    // MASTER RENDER ROUTER - dispatches to A or B based on active design
+    // =========================================================================
+    async function renderDrawer(currentState) {
+      if (getActiveDesign() === 'b') {
+        await renderDrawerB(currentState);
+      } else {
+        await renderDrawerA(currentState);
+      }
+    }
 
-  function goToCheckout() {
-    window.location.href = '/checkout';
-  }
+    // =========================================================================
+    // URGENCY TIMER (Hardik update) - visual only, resets at 0
+    // =========================================================================
+    function initUrgencyTimer() {
+      var timerEl = document.getElementById('drawerUrgencyTime');
+      if (!timerEl) return;
 
-  // ==================== EVENT LISTENERS ====================
+      var seconds = 7 * 60;
+      function tick() {
+        if (seconds <= 0) seconds = 7 * 60;
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+        seconds--;
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
 
-  function bindEvents() {
-    // Close button
-    const closeBtn = document.getElementById('drawerClose');
-    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    // =========================================================================
+    // EVENT BINDING
+    // =========================================================================
+    function initDrawerEvents() {
+      var drawer = document.getElementById('nuora-cart-drawer');
+      var overlay = document.getElementById('nuora-cart-overlay');
+      if (!drawer) return;
 
-    // Overlay click
-    const overlay = document.getElementById('nuora-cart-overlay');
-    if (overlay) overlay.addEventListener('click', closeDrawer);
+      var closeBtn = document.getElementById('drawerClose');
+      if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+      if (overlay) overlay.addEventListener('click', closeDrawer);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && state.isDrawerOpen) closeDrawer();
+      });
 
-    // Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeDrawer();
-    });
+      var checkoutBtn = document.getElementById('drawerCheckout');
+      if (checkoutBtn) checkoutBtn.addEventListener('click', goToCheckout);
+    }
 
-    // Checkout button
-    const checkoutBtn = document.getElementById('drawerCheckout');
-    if (checkoutBtn) checkoutBtn.addEventListener('click', goToCheckout);
+    // =========================================================================
+    // INIT
+    // =========================================================================
+    async function init() {
+      subscribe(renderDrawer);
+      initDrawerEvents();
+      initUrgencyTimer();
+      await refresh();
 
-    // Hijack cart icon clicks sitewide
-    document.querySelectorAll(
-      'a[href="/cart"], a[href="/cart/"], .cart-icon, [data-cart-trigger]'
-    ).forEach(el => {
-      el.addEventListener('click', (e) => {
+      // Intercept theme add-to-cart forms
+      document.addEventListener('submit', async function(e) {
+        var form = e.target.closest('form[action="/cart/add"], form[data-add-to-cart]');
+        if (!form) return;
         e.preventDefault();
+        var fd = new FormData(form);
+        var id = fd.get('id');
+        var qty = fd.get('quantity') || 1;
+        var sp = fd.get('selling_plan');
+        await addToCart(parseInt(id, 10), parseInt(qty, 10), sp ? parseInt(sp, 10) : null);
         openDrawer();
       });
-    });
 
-    // Intercept theme add-to-cart form submissions
-    document.addEventListener('submit', async (e) => {
-      const form = e.target.closest('form[action="/cart/add"]');
-      if (!form) return;
-      e.preventDefault();
+      // Theme AJAX events
+      document.addEventListener('ajaxProduct:added', function() { refresh(); openDrawer(); });
+      document.addEventListener('cart:item-added', function() { refresh(); openDrawer(); });
+      document.addEventListener('theme:cart:change', function() { refresh(); });
 
-      const formData = new FormData(form);
-      const variantId = formData.get('id');
-      const qty = formData.get('quantity') || 1;
-      const sellingPlan = formData.get('selling_plan');
+      // Custom events (Replo bridge)
+      document.addEventListener('cart:refresh', function() { refresh(); openDrawer(); });
+      document.addEventListener('cart:open', function() { openDrawer(); });
+      document.addEventListener('cart:close', function() { closeDrawer(); });
 
-      if (variantId) {
-        await addToCart(
-          parseInt(variantId),
-          parseInt(qty),
-          sellingPlan ? parseInt(sellingPlan) : null
-        );
-      }
-    });
+      // Hijack cart icon clicks
+      document.querySelectorAll('a[href="/cart"], a[href="/cart/"], .cart-icon, [data-cart-trigger]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          e.preventDefault();
+          openDrawer();
+        });
+      });
 
-    // Listen for custom events (from Replo, custom scripts, etc.)
-    document.addEventListener('cart:refresh', async () => {
-      await fetchCart();
-      render();
-      openDrawer();
-    });
+      // Wire early intercepts
+      _refreshFn = refresh;
+      _openFn = openDrawer;
+      _drawerReady = true;
 
-    document.addEventListener('cart:open', openDrawer);
-    document.addEventListener('cart:close', closeDrawer);
-  }
-
-  // ==================== URGENCY TIMER ====================
-  // Visual only - never actually expires the cart. Resets silently at 0.
-
-  function initUrgencyTimer() {
-    const timerEl = document.getElementById('drawerUrgencyTime');
-    if (!timerEl) return;
-
-    let seconds = 7 * 60;
-
-    function tick() {
-      if (seconds <= 0) seconds = 7 * 60;
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
-      seconds--;
+      console.log('[NuoraCart] Drawer initialized. Design:', getActiveDesign().toUpperCase(), '| Items:', state.cart ? state.cart.item_count : 0);
     }
 
-    tick();
-    setInterval(tick, 1000);
-  }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
 
-  // ==================== INIT ====================
-
-  async function init() {
-    await fetchCart();
-    render();
-    bindEvents();
-    initUrgencyTimer();
-    console.log('[NuoraCart] Drawer initialized. Items:', cart ? cart.item_count : 0);
-  }
-
-  // Auto-init on DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  // Public API
-  return {
-    init,
-    openDrawer,
-    closeDrawer,
-    addToCart,
-    changeItem,
-    removeItem,
-    upgradeToPack,
-    fetchCart,
-    render,
-    getCart: () => cart,
-    formatMoney,
-  };
-})();
+    return {
+      init: init,
+      openDrawer: openDrawer,
+      closeDrawer: closeDrawer,
+      addToCart: addToCart,
+      changeItem: changeItem,
+      removeItem: removeItem,
+      upgradeToPack: upgradeToPack,
+      refresh: refresh,
+      subscribe: subscribe,
+      getState: function() { return { ...state }; },
+      getCart: function() { return state.cart; },
+      formatMoney: formatMoney,
+      goToCheckout: goToCheckout,
+      getActiveDesign: getActiveDesign,
+    };
+  })();

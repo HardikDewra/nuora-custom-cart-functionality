@@ -1,730 +1,895 @@
 /*
  * Nuora Cart Drawer - Slide-out Cart Styles
- *
- * Brand: Nuora (mynuora.com)
- * Design: Hardik (CRO + Design)
+ * Brand: Nuora (mynuora.com) | Design: Hardik (CRO + Design)
  *
  * Upload to: /assets/nuora-cart-drawer.css
- * Load in theme.liquid <head>:
- *   {{ 'nuora-cart-drawer.css' | asset_url | stylesheet_tag }}
  *
  * Rules:
- * - Light mode ONLY
- * - 4px border-radius
- * - NO shadows, NO glow, NO gradients
+ * - Light mode ONLY, 4px border-radius, NO shadows/glow/gradients
  * - Hover states go LIGHTER (rgba white overlay)
  * - Heading: Americana BT Bold | Body: Montserrat
  * - No pure black - use #542C0D (Brown-950)
  */
 
-/* ==================== VARIABLES ==================== */
-:root {
-  --nc-yellow-25: #FEFDF0;
-  --nc-yellow-50: #FEFBE8;
-  --nc-yellow-100: #FEF7C3;
-  --nc-yellow-200: #FDE272;
-  --nc-yellow-400: #FAC515;
-  --nc-yellow-500: #EAAA08;
-  --nc-yellow-600: #CA8504;
-  --nc-brown-800: #854A0E;
-  --nc-brown-900: #713B12;
-  --nc-brown-950: #542C0D;
-  --nc-rose-light: #FDF0F4;
-  --nc-rose-primary: #9B083E;
-  --nc-rose-pdp: #7B1C3A;
-  --nc-positive: #276536;
-  --nc-positive-bg: #e8f5e9;
-  --nc-white: #ffffff;
-  --nc-border: rgba(113, 59, 18, 0.10);
-  --nc-border-solid: #ece3d5;
-  --nc-glass: rgba(255, 255, 255, 0.55);
-  --nc-glass-border: rgba(113, 59, 18, 0.08);
-  --nc-font-heading: 'Americana BT', Georgia, 'Times New Roman', serif;
-  --nc-font-body: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --nc-drawer-width: 420px;
-  --nc-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+ @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+
+ @font-face {
+   font-family: 'Americana BT';
+   src: local('Americana BT Bold'), local('AmericanaBT-Bold');
+   font-weight: 700;
+   font-style: normal;
+ }
+ 
+ :root {
+   --nc-yellow-25: #FEFDF0;
+   --nc-yellow-50: #FEFBE8;
+   --nc-yellow-100: #FEF7C3;
+   --nc-yellow-200: #FDE272;
+   --nc-yellow-400: #FAC515;
+   --nc-yellow-500: #EAAA08;
+   --nc-yellow-600: #CA8504;
+   --nc-brown-800: #854A0E;
+   --nc-brown-900: #713B12;
+   --nc-brown-950: #542C0D;
+   --nc-rose-light: #FDF0F4;
+   --nc-rose-primary: #9B083E;
+   --nc-rose-pdp: #7B1C3A;
+   --nc-positive: #276536;
+   --nc-positive-bg: #e8f5e9;
+   --nc-white: #ffffff;
+   --nc-border: rgba(113, 59, 18, 0.10);
+   --nc-border-solid: #ece3d5;
+   --nc-font-heading: 'Americana BT', Georgia, 'Times New Roman', serif;
+   --nc-font-body: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+   --nc-drawer-width: 420px;
+   --nc-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+ }
+ 
+ /* ==================== OVERLAY ==================== */
+ .nuora-cart-overlay {
+   position: fixed;
+   inset: 0;
+   background: rgba(84, 44, 13, 0.4);
+   z-index: 9998;
+   opacity: 0;
+   visibility: hidden;
+   transition: opacity var(--nc-transition), visibility var(--nc-transition);
+ }
+ .nuora-cart-overlay.is-open {
+   opacity: 1;
+   visibility: visible;
+ }
+ 
+ /* ==================== DRAWER SHELL ==================== */
+ .nuora-cart-drawer {
+   position: fixed;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   width: var(--nc-drawer-width);
+   max-width: 100%;
+   background: var(--nc-white);
+   z-index: 9999;
+   display: flex;
+   flex-direction: column;
+   transform: translateX(100%);
+   transition: transform var(--nc-transition);
+   font-family: var(--nc-font-body);
+   color: var(--nc-brown-900);
+   -webkit-font-smoothing: antialiased;
+   overflow-x: hidden;
+ }
+ .nuora-cart-drawer.is-open {
+   transform: translateX(0);
+ }
+ 
+ /* Reset any theme borders/rules bleeding into the drawer */
+ .nuora-cart-drawer hr,
+ .nuora-cart-drawer__scrollable hr {
+   display: none !important;
+ }
+ .nuora-cart-drawer * {
+   border-image: none !important;
+ }
+ 
+ /* ==================== HEADER ==================== */
+ .nuora-cart-drawer__header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 16px 20px;
+   border-bottom: 1px solid var(--nc-border-solid);
+   flex-shrink: 0;
+ }
+ .nuora-cart-drawer__title {
+   font-family: var(--nc-font-heading);
+   font-size: 16px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+   letter-spacing: 0.02em;
+   margin: 0;
+ }
+ .nuora-cart-drawer__count {
+   font-family: var(--nc-font-body);
+   font-weight: 500;
+   font-size: 13px;
+   color: var(--nc-brown-800);
+ }
+ .nuora-cart-drawer__close {
+   width: 32px;
+   height: 32px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   background: var(--nc-white);
+   cursor: pointer;
+   color: var(--nc-brown-800);
+   font-size: 16px;
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__close:hover {
+   background: rgba(255, 255, 255, 0.8);
+ }
+ 
+ /* ==================== URGENCY TIMER ==================== */
+ .nuora-cart-drawer__urgency {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: 8px 20px;
+   background: #fce4ec;
+   border-bottom: 1px solid var(--nc-border-solid);
+   font-size: 12px;
+   color: var(--nc-rose-primary);
+   font-weight: 500;
+   flex-shrink: 0;
+ }
+ .nuora-cart-drawer__urgency strong {
+   font-weight: 700;
+   font-variant-numeric: tabular-nums;
+ }
+ 
+ /* ==================== SHIPPING BAR ==================== */
+ .nuora-cart-drawer__shipping {
+   padding: 12px 20px;
+   border-bottom: 1px solid var(--nc-border-solid);
+   flex-shrink: 0;
+ }
+ .nuora-cart-drawer__shipping-text {
+   font-size: 13px;
+   font-weight: 600;
+   color: var(--nc-brown-800);
+   text-align: center;
+   margin: 0 0 8px;
+   display: block !important;
+ }
+ .nuora-cart-drawer__shipping-text.is-qualified {
+   color: var(--nc-positive);
+ }
+ .nuora-cart-drawer__shipping-track {
+   display: block !important;
+   width: 100% !important;
+   height: 6px !important;
+   min-height: 6px !important;
+   background: #F0F0F0 !important;
+   border-radius: 4px;
+   overflow: hidden;
+   position: relative;
+   padding: 0 !important;
+   margin: 0 !important;
+ }
+ .nuora-cart-drawer__shipping-fill {
+   display: block !important;
+   height: 6px !important;
+   min-height: 6px !important;
+   background: var(--nc-yellow-400) !important;
+   border-radius: 4px;
+   width: 0%;
+   transition: width 0.4s ease;
+   padding: 0 !important;
+   margin: 0 !important;
+   position: absolute;
+   top: 0;
+   left: 0;
+ }
+ .nuora-cart-drawer__shipping-fill.is-qualified {
+   background: var(--nc-positive) !important;
+ }
+ 
+ /* ==================== SCROLLABLE AREA ==================== */
+ .nuora-cart-drawer__scrollable {
+   flex: 1;
+   overflow-y: auto;
+   overscroll-behavior: contain;
+   -webkit-overflow-scrolling: touch;
+ }
+ 
+ /* ==================== LINE ITEMS ==================== */
+ .nuora-cart-drawer__item {
+   display: flex;
+   gap: 14px;
+   padding: 16px 20px;
+   border-bottom: 1px solid var(--nc-border);
+ }
+ .nuora-cart-drawer__item-img {
+   width: 72px;
+   height: 72px;
+   flex-shrink: 0;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   overflow: hidden;
+   background: var(--nc-yellow-50);
+ }
+ .nuora-cart-drawer__item-img img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+ }
+ .nuora-cart-drawer__item-img.is-rose {
+   background: var(--nc-rose-light);
+ }
+ .nuora-cart-drawer__item-details {
+   flex: 1;
+   min-width: 0;
+ }
+ .nuora-cart-drawer__item-name {
+   font-size: 14px;
+   font-weight: 600;
+   color: var(--nc-brown-950);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__item-variant {
+   font-size: 12px;
+   color: var(--nc-brown-800);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__item-plan {
+   font-size: 11px;
+   font-weight: 600;
+   color: var(--nc-yellow-600);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__item-savings {
+   font-size: 11px;
+   font-weight: 600;
+   color: var(--nc-positive);
+   margin: 0 0 8px;
+ }
+ .nuora-cart-drawer__item-bottom {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 8px;
+ }
+ .nuora-cart-drawer__item-actions {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+ }
+ .nuora-cart-drawer__item-price {
+   text-align: right;
+   flex-shrink: 0;
+   max-width: 45%;
+ }
+ .nuora-cart-drawer__price-current {
+   font-size: 15px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+   word-break: break-word;
+ }
+ .nuora-cart-drawer__price-compare {
+   font-size: 12px;
+   color: var(--nc-brown-800);
+   text-decoration: line-through;
+   word-break: break-word;
+ }
+ .nuora-cart-drawer__price-compare::before,
+ .nuora-cart-drawer__price-compare::after,
+ .nuora-cart-drawer .strike::before,
+ .nuora-cart-drawer .strike::after {
+   display: none !important;
+   content: none !important;
+ }
+ 
+ /* ==================== QUANTITY CONTROL ==================== */
+ .nuora-cart-drawer__qty {
+   display: flex;
+   align-items: center;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   overflow: hidden;
+ }
+ .nuora-cart-drawer__qty-btn {
+   width: 28px;
+   height: 28px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background: var(--nc-white);
+   border: none;
+   cursor: pointer;
+   color: var(--nc-brown-900);
+   font-size: 14px;
+   font-weight: 600;
+   font-family: var(--nc-font-body);
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__qty-btn:hover {
+   background: rgba(255, 255, 255, 0.6);
+ }
+ .nuora-cart-drawer__qty-value {
+   width: 32px;
+   text-align: center;
+   font-size: 13px;
+   font-weight: 600;
+   color: var(--nc-brown-950);
+   border-left: 1px solid var(--nc-border-solid);
+   border-right: 1px solid var(--nc-border-solid);
+   line-height: 28px;
+ }
+ 
+ /* ==================== REMOVE BUTTON ==================== */
+ .nuora-cart-drawer__remove {
+   font-family: var(--nc-font-body);
+   font-size: 11px;
+   font-weight: 600;
+   color: var(--nc-rose-primary);
+   background: none;
+   border: none;
+   cursor: pointer;
+   text-transform: uppercase;
+   letter-spacing: 0.04em;
+   padding: 4px 0;
+   transition: opacity var(--nc-transition);
+ }
+ .nuora-cart-drawer__remove:hover {
+   opacity: 0.7;
+ }
+ 
+ /* ==================== CROSS-SELL ==================== */
+ .nuora-cart-drawer__cross-sell {
+   padding: 16px 20px;
+   border-top: none;
+ }
+ .nuora-cart-drawer__section-title {
+   font-size: 12px;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   color: var(--nc-brown-800);
+   margin: 0 0 12px;
+ }
+ .nuora-cart-drawer__cross-sell-card {
+   display: flex;
+   gap: 12px;
+   align-items: center;
+   padding: 12px;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   background: var(--nc-rose-light);
+ }
+ .nuora-cart-drawer__cross-sell-img {
+   width: 56px;
+   height: 56px;
+   flex-shrink: 0;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   overflow: hidden;
+   background: var(--nc-white);
+ }
+ .nuora-cart-drawer__cross-sell-img img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+ }
+ .nuora-cart-drawer__cross-sell-info {
+   flex: 1;
+   min-width: 0;
+ }
+ .nuora-cart-drawer__cross-sell-name {
+   font-size: 13px;
+   font-weight: 600;
+   color: var(--nc-brown-950);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__cross-sell-price {
+   font-size: 12px;
+   color: var(--nc-brown-800);
+   margin: 0;
+ }
+ .nuora-cart-drawer__cross-sell-price .strike {
+   text-decoration: line-through;
+   opacity: 0.6;
+ }
+ .nuora-cart-drawer__cross-sell-price .strike::before,
+ .nuora-cart-drawer__cross-sell-price .strike::after {
+   display: none !important;
+   content: none !important;
+ }
+ .nuora-cart-drawer__cross-sell-add {
+   flex-shrink: 0;
+   font-family: var(--nc-font-body);
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   background: var(--nc-rose-primary);
+   color: var(--nc-white);
+   border: none;
+   padding: 8px 14px;
+   border-radius: 4px;
+   cursor: pointer;
+   white-space: nowrap;
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__cross-sell-add:hover {
+   background: rgba(155, 8, 62, 0.85);
+ }
+ 
+ /* ==================== BUNDLE UPSELL ==================== */
+ .nuora-cart-drawer__bundle {
+   padding: 16px 20px;
+   border-top: none;
+ }
+ .nuora-cart-drawer__bundle-card {
+   padding: 14px 16px;
+   border: 1px solid var(--nc-yellow-400);
+   border-radius: 4px;
+   background: var(--nc-yellow-50);
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+ }
+ .nuora-cart-drawer__bundle-title {
+   font-size: 14px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__bundle-sub {
+   font-size: 12px;
+   color: var(--nc-brown-800);
+   margin: 0;
+ }
+ .nuora-cart-drawer__bundle-btn {
+   flex-shrink: 0;
+   font-family: var(--nc-font-body);
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   background: var(--nc-yellow-400);
+   color: var(--nc-brown-950);
+   border: none;
+   padding: 8px 16px;
+   border-radius: 4px;
+   cursor: pointer;
+   white-space: nowrap;
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__bundle-btn:hover {
+   background: rgba(250, 197, 21, 0.8);
+ }
+ 
+ /* ==================== FOOTER ==================== */
+ .nuora-cart-drawer__footer {
+   padding: 20px;
+   border-top: 1px solid var(--nc-border-solid);
+   flex-shrink: 0;
+ }
+ .nuora-cart-drawer__summary-row {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 4px 0;
+   font-size: 13px;
+   color: var(--nc-brown-800);
+ }
+ .nuora-cart-drawer__summary-total {
+   font-size: 16px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+   padding: 8px 0;
+   border-top: 1px solid var(--nc-border-solid);
+   margin-top: 4px;
+ }
+ .nuora-cart-drawer__savings {
+   font-size: 13px;
+   font-weight: 600;
+   color: var(--nc-positive);
+   text-align: center;
+   padding: 8px 0;
+   margin: 0;
+ }
+ .nuora-cart-drawer__checkout {
+   width: 100%;
+   font-family: var(--nc-font-body);
+   font-size: 14px;
+   font-weight: 700;
+   letter-spacing: 0.02em;
+   text-transform: uppercase;
+   background: var(--nc-brown-950);
+   color: var(--nc-white);
+   border: none;
+   padding: 14px 24px;
+   border-radius: 4px;
+   cursor: pointer;
+   margin-top: 8px;
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__checkout:hover {
+   background: rgba(84, 44, 13, 0.85);
+ }
+ .nuora-cart-drawer__trust {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   gap: 16px;
+   padding-top: 12px;
+   font-size: 11px;
+   color: var(--nc-brown-800);
+   flex-wrap: wrap;
+ }
+ 
+ /* ==================== EMPTY STATE ==================== */
+ .nuora-cart-drawer__empty {
+   flex: 1;
+   display: flex;
+   flex-direction: column;
+   padding: 32px 20px;
+   overflow-y: auto;
+ }
+ .nuora-cart-drawer__empty-title {
+   font-family: var(--nc-font-heading);
+   font-size: 20px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+   margin: 0 0 4px;
+   text-align: center;
+ }
+ .nuora-cart-drawer__empty-sub {
+   font-size: 13px;
+   color: var(--nc-brown-800);
+   margin: 0 0 24px;
+   text-align: center;
+ }
+ .nuora-cart-drawer__empty-products {
+   display: flex;
+   flex-direction: column;
+   gap: 12px;
+ }
+ .nuora-cart-drawer__suggest-card {
+   display: flex;
+   gap: 14px;
+   padding: 16px;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   background: var(--nc-white);
+   align-items: center;
+ }
+ .nuora-cart-drawer__suggest-card.is-yellow {
+   border-left: 3px solid var(--nc-yellow-400);
+ }
+ .nuora-cart-drawer__suggest-card.is-rose {
+   border-left: 3px solid var(--nc-rose-primary);
+ }
+ .nuora-cart-drawer__suggest-img {
+   width: 64px;
+   height: 64px;
+   flex-shrink: 0;
+   border: 1px solid var(--nc-border-solid);
+   border-radius: 4px;
+   overflow: hidden;
+   background: var(--nc-yellow-50);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+ }
+ .nuora-cart-drawer__suggest-img.is-rose {
+   background: var(--nc-rose-light);
+ }
+ .nuora-cart-drawer__suggest-img img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+ }
+ .nuora-cart-drawer__suggest-info {
+   flex: 1;
+   min-width: 0;
+ }
+ .nuora-cart-drawer__suggest-name {
+   font-size: 14px;
+   font-weight: 600;
+   color: var(--nc-brown-950);
+   margin: 0 0 2px;
+ }
+ .nuora-cart-drawer__suggest-meta {
+   font-size: 11px;
+   color: var(--nc-brown-800);
+   margin: 0 0 4px;
+ }
+ .nuora-cart-drawer__suggest-stars {
+   font-size: 11px;
+   color: var(--nc-yellow-500);
+   margin: 0 0 8px;
+ }
+ .nuora-cart-drawer__suggest-price {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   margin: 0 0 10px;
+ }
+ .nuora-cart-drawer__suggest-price-current {
+   font-size: 14px;
+   font-weight: 700;
+   color: var(--nc-brown-950);
+ }
+ .nuora-cart-drawer__suggest-price-compare {
+   font-size: 12px;
+   color: var(--nc-brown-800);
+   text-decoration: line-through;
+ }
+ .nuora-cart-drawer__suggest-add {
+   font-family: var(--nc-font-body);
+   font-size: 11px;
+   font-weight: 700;
+   letter-spacing: 0.04em;
+   text-transform: uppercase;
+   color: var(--nc-white);
+   border: none;
+   padding: 8px 16px;
+   border-radius: 4px;
+   cursor: pointer;
+   transition: background var(--nc-transition);
+ }
+ .nuora-cart-drawer__suggest-add.is-yellow {
+   background: var(--nc-yellow-600);
+ }
+ .nuora-cart-drawer__suggest-add.is-yellow:hover {
+   background: rgba(202, 133, 4, 0.8);
+ }
+ .nuora-cart-drawer__suggest-add.is-rose {
+   background: var(--nc-rose-primary);
+ }
+ .nuora-cart-drawer__suggest-add.is-rose:hover {
+   background: rgba(155, 8, 62, 0.85);
+ }
+ .nuora-cart-drawer__empty-browse {
+   display: block;
+   text-align: center;
+   margin-top: 16px;
+   font-size: 13px;
+   font-weight: 600;
+   color: var(--nc-brown-800);
+   text-decoration: underline;
+   text-underline-offset: 3px;
+ }
+ .nuora-cart-drawer__empty-browse:hover {
+   color: var(--nc-brown-950);
+ }
+ 
+ /* ==================== LOADING STATE ==================== */
+ .nuora-cart-drawer.is-loading {
+   pointer-events: none;
+ }
+ .nuora-cart-drawer.is-loading .nuora-cart-drawer__scrollable {
+   opacity: 0.5;
+   transition: opacity 150ms ease;
+ }
+ 
+ /* ==================== BODY SCROLL LOCK ==================== */
+ body.nuora-cart-open {
+   overflow: hidden;
+ }
+ 
+ /* ==================== MOBILE ==================== */
+ @media (max-width: 480px) {
+   .nuora-cart-drawer {
+     width: 100%;
+   }
+   .nuora-cart-drawer__header {
+     padding: 14px 16px;
+   }
+   .nuora-cart-drawer__urgency {
+     padding: 8px 16px;
+     font-size: 11px;
+   }
+   .nuora-cart-drawer__shipping {
+     padding: 10px 16px;
+   }
+   .nuora-cart-drawer__item {
+     padding: 14px 16px;
+     gap: 12px;
+   }
+   .nuora-cart-drawer__item-img {
+     width: 64px;
+     height: 64px;
+   }
+   .nuora-cart-drawer__price-current {
+     font-size: 14px;
+   }
+   .nuora-cart-drawer__price-compare {
+     font-size: 11px;
+   }
+   .nuora-cart-drawer__cross-sell {
+     padding: 14px 16px;
+   }
+   .nuora-cart-drawer__cross-sell-card {
+     gap: 10px;
+     padding: 10px;
+   }
+   .nuora-cart-drawer__bundle {
+     padding: 14px 16px;
+   }
+   .nuora-cart-drawer__bundle-card {
+     flex-direction: column;
+     align-items: flex-start;
+   }
+   .nuora-cart-drawer__footer {
+     padding: 16px;
+   }
+   .nuora-cart-drawer__summary-row {
+     font-size: 12px;
+   }
+   .nuora-cart-drawer__summary-total {
+     font-size: 15px;
+   }
+   .nuora-cart-drawer__checkout {
+     font-size: 13px;
+     padding: 12px 20px;
+   }
+   .nuora-cart-drawer__empty {
+     padding: 24px 16px;
+   }
+   .nuora-cart-drawer__suggest-card {
+     padding: 12px;
+     gap: 12px;
+   }
+   .nuora-cart-drawer__suggest-img {
+     width: 56px;
+     height: 56px;
+   }
+ }
+/* ================================================================
+   DESIGN A (CONTROL) - UpCart-like minimal cart
+   Scoped under body[data-cart-design="a"]
+   ================================================================ */
+
+/* Hide Design B features in Design A */
+body[data-cart-design="a"] .nuora-cart-drawer__shipping,
+body[data-cart-design="a"] .nuora-cart-drawer__cross-sell,
+body[data-cart-design="a"] .nuora-cart-drawer__bundle {
+  display: none !important;
 }
 
-/* ==================== OVERLAY ==================== */
-.nuora-cart-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(84, 44, 13, 0.4);
-  z-index: 9998;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--nc-transition), visibility var(--nc-transition);
-}
-
-.nuora-cart-overlay.is-open {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* ==================== DRAWER SHELL ==================== */
-.nuora-cart-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--nc-drawer-width);
-  max-width: 100%;
-  background: var(--nc-white);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(100%);
-  transition: transform var(--nc-transition);
-  font-family: var(--nc-font-body);
-  color: var(--nc-brown-900);
-  -webkit-font-smoothing: antialiased;
-}
-
-.nuora-cart-drawer.is-open {
-  transform: translateX(0);
-}
-
-/* ==================== HEADER ==================== */
-.nuora-cart-drawer__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--nc-border-solid);
-  flex-shrink: 0;
-}
-
-.nuora-cart-drawer__title {
-  font-family: var(--nc-font-heading);
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-  letter-spacing: 0.02em;
-  margin: 0;
-}
-
-.nuora-cart-drawer__count {
-  font-family: var(--nc-font-body);
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--nc-brown-800);
-}
-
-.nuora-cart-drawer__close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
+/* Center the header title (UpCart style) */
+body[data-cart-design="a"] .nuora-cart-drawer__header {
   justify-content: center;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  background: var(--nc-white);
-  cursor: pointer;
-  color: var(--nc-brown-800);
-  transition: background var(--nc-transition);
+  position: relative;
 }
 
-.nuora-cart-drawer__close:hover {
-  background: rgba(255, 255, 255, 0.8);
-}
-
-/* ==================== URGENCY TIMER ==================== */
-.nuora-cart-drawer__urgency {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 20px;
-  background: #fce4ec;
-  border-bottom: 1px solid var(--nc-border-solid);
-  font-size: 12px;
-  color: var(--nc-rose-primary);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.nuora-cart-drawer__urgency strong {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ==================== SHIPPING BAR ==================== */
-.nuora-cart-drawer__shipping {
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--nc-border-solid);
-  flex-shrink: 0;
-}
-
-.nuora-cart-drawer__shipping-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nc-brown-800);
+body[data-cart-design="a"] .nuora-cart-drawer__title {
   text-align: center;
-  margin: 0 0 8px;
+  font-size: 18px;
 }
 
-.nuora-cart-drawer__shipping-text.is-qualified {
-  color: var(--nc-positive);
+body[data-cart-design="a"] .nuora-cart-drawer__close {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-.nuora-cart-drawer__shipping-track {
-  width: 100%;
-  height: 6px;
-  background: #F0F0F0;
-  border-radius: 4px;
-  overflow: hidden;
+/* Design A line item - simplified layout */
+body[data-cart-design="a"] .nuora-cart-drawer__item {
+  position: relative;
 }
 
-.nuora-cart-drawer__shipping-fill {
-  height: 100%;
-  background: var(--nc-yellow-400);
-  border-radius: 4px;
-  transition: width 0.4s ease;
-  width: 0%;
-}
-
-.nuora-cart-drawer__shipping-fill.is-qualified {
-  background: var(--nc-positive);
-}
-
-/* ==================== SCROLLABLE AREA ==================== */
-/* Items + cross-sell + bundle all scroll together.
-   Footer with checkout stays pinned at the bottom (thumb zone on mobile). */
-.nuora-cart-drawer__scrollable {
-  flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.nuora-cart-drawer__items {
-  /* No longer the flex child - lives inside scrollable wrapper */
-}
-
-/* Individual Line Item */
-.nuora-cart-drawer__item {
+/* Design A: price row (compare + current on same line) */
+.nuora-cart-drawer__price-row {
   display: flex;
-  gap: 14px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--nc-border);
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  flex-wrap: wrap;
 }
 
-.nuora-cart-drawer__item-img {
-  width: 72px;
-  height: 72px;
-  flex-shrink: 0;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--nc-yellow-50);
+.nuora-cart-drawer__price-row .nuora-cart-drawer__price-compare {
+  font-size: 13px;
 }
 
-.nuora-cart-drawer__item-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.nuora-cart-drawer__item-img.is-rose {
-  background: var(--nc-rose-light);
-}
-
-.nuora-cart-drawer__item-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.nuora-cart-drawer__item-name {
+.nuora-cart-drawer__price-row .nuora-cart-drawer__price-current {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--nc-brown-950);
-  margin: 0 0 2px;
 }
 
-.nuora-cart-drawer__item-variant {
+/* Design A: per-item savings "(You saved $X.XX)" */
+.nuora-cart-drawer__item-saved {
   font-size: 12px;
-  color: var(--nc-brown-800);
-  margin: 0 0 2px;
-}
-
-.nuora-cart-drawer__item-plan {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--nc-yellow-600);
-  margin: 0 0 2px;
-}
-
-.nuora-cart-drawer__item-savings {
-  font-size: 11px;
   font-weight: 600;
   color: var(--nc-positive);
-  margin: 0 0 8px;
+  margin: 2px 0 0;
 }
 
-.nuora-cart-drawer__item-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.nuora-cart-drawer__item-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Quantity Control */
-.nuora-cart-drawer__qty {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.nuora-cart-drawer__qty-btn {
+/* Design A: trash/delete button */
+.nuora-cart-drawer__delete-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
   width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--nc-white);
-  border: none;
-  cursor: pointer;
-  color: var(--nc-brown-900);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--nc-font-body);
-  transition: background var(--nc-transition);
-}
-
-.nuora-cart-drawer__qty-btn:hover {
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.nuora-cart-drawer__qty-value {
-  width: 32px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nc-brown-950);
-  border-left: 1px solid var(--nc-border-solid);
-  border-right: 1px solid var(--nc-border-solid);
-  line-height: 28px;
-}
-
-/* Remove Button */
-.nuora-cart-drawer__remove {
-  font-family: var(--nc-font-body);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--nc-rose-primary);
   background: none;
   border: none;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 4px 0;
-  transition: opacity var(--nc-transition);
-}
-
-.nuora-cart-drawer__remove:hover {
-  opacity: 0.7;
-}
-
-/* Item Price */
-.nuora-cart-drawer__item-price {
-  text-align: right;
-}
-
-.nuora-cart-drawer__price-current {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-}
-
-.nuora-cart-drawer__price-compare {
-  font-size: 12px;
   color: var(--nc-brown-800);
-  text-decoration: line-through;
+  padding: 0;
+  transition: color var(--nc-transition);
 }
 
-/* ==================== CROSS-SELL ==================== */
-.nuora-cart-drawer__cross-sell {
-  padding: 16px 20px;
-  border-top: 1px solid var(--nc-border-solid);
+.nuora-cart-drawer__delete-btn:hover {
+  color: var(--nc-rose-primary);
 }
 
-.nuora-cart-drawer__section-title {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--nc-brown-800);
-  margin: 0 0 12px;
-}
-
-.nuora-cart-drawer__cross-sell-card {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  background: var(--nc-rose-light);
-}
-
-.nuora-cart-drawer__cross-sell-img {
-  width: 56px;
-  height: 56px;
-  flex-shrink: 0;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--nc-white);
-}
-
-.nuora-cart-drawer__cross-sell-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.nuora-cart-drawer__cross-sell-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.nuora-cart-drawer__cross-sell-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nc-brown-950);
-  margin: 0 0 2px;
-}
-
-.nuora-cart-drawer__cross-sell-price {
-  font-size: 12px;
-  color: var(--nc-brown-800);
-  margin: 0;
-}
-
-.nuora-cart-drawer__cross-sell-price .strike {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.nuora-cart-drawer__cross-sell-add {
-  font-family: var(--nc-font-body);
-  font-size: 11px;
+/* Design A: discount badge for multi-packs */
+.nuora-cart-drawer__discount-badge {
+  display: inline-block;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: var(--nc-rose-primary);
-  color: var(--nc-white);
-  border: none;
-  padding: 8px 14px;
+  background: var(--nc-yellow-100);
+  color: var(--nc-yellow-600);
+  padding: 2px 8px;
   border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--nc-transition);
-}
-
-.nuora-cart-drawer__cross-sell-add:hover {
-  background: rgba(155, 8, 62, 0.85);
-}
-
-/* ==================== BUNDLE UPSELL ==================== */
-.nuora-cart-drawer__bundle {
-  padding: 16px 20px;
-  border-top: 1px solid var(--nc-border-solid);
-}
-
-.nuora-cart-drawer__bundle-card {
-  padding: 14px 16px;
-  border: 1px solid var(--nc-yellow-400);
-  border-radius: 4px;
-  background: var(--nc-yellow-50);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.nuora-cart-drawer__bundle-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-  margin: 0 0 2px;
-}
-
-.nuora-cart-drawer__bundle-sub {
-  font-size: 12px;
-  color: var(--nc-brown-800);
-  margin: 0;
-}
-
-.nuora-cart-drawer__bundle-btn {
-  font-family: var(--nc-font-body);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--nc-yellow-400);
-  color: var(--nc-brown-950);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--nc-transition);
-}
-
-.nuora-cart-drawer__bundle-btn:hover {
-  background: rgba(250, 197, 21, 0.8);
-}
-
-/* ==================== FOOTER ==================== */
-.nuora-cart-drawer__footer {
-  padding: 20px;
-  border-top: 1px solid var(--nc-border-solid);
-  flex-shrink: 0;
-}
-
-.nuora-cart-drawer__summary-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  font-size: 13px;
-  color: var(--nc-brown-800);
-}
-
-.nuora-cart-drawer__summary-total {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-  padding: 8px 0;
-  border-top: 1px solid var(--nc-border-solid);
+  border: 1px solid var(--nc-yellow-200);
   margin-top: 4px;
 }
 
-.nuora-cart-drawer__savings {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nc-positive);
-  text-align: center;
-  padding: 8px 0;
-  margin: 0;
-}
-
-.nuora-cart-drawer__checkout {
-  width: 100%;
-  font-family: var(--nc-font-body);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  background: var(--nc-brown-950);
-  color: var(--nc-white);
-  border: none;
-  padding: 14px 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: background var(--nc-transition);
-}
-
-.nuora-cart-drawer__checkout:hover {
-  background: rgba(84, 44, 13, 0.85);
-}
-
-.nuora-cart-drawer__trust {
+/* Design A: guarantee row in footer */
+.nuora-cart-drawer__guarantee {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding-top: 12px;
-  font-size: 11px;
-  color: var(--nc-brown-800);
-  flex-wrap: wrap;
-}
-
-/* ==================== EMPTY STATE ==================== */
-/* ==================== EMPTY STATE ==================== */
-.nuora-cart-drawer__empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 32px 20px;
-  overflow-y: auto;
-}
-
-.nuora-cart-drawer__empty-title {
-  font-family: var(--nc-font-heading);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-  margin: 0 0 4px;
-  text-align: center;
-}
-
-.nuora-cart-drawer__empty-sub {
-  font-size: 13px;
-  color: var(--nc-brown-800);
-  margin: 0 0 24px;
-  text-align: center;
-}
-
-/* Product suggestion cards in empty state */
-.nuora-cart-drawer__empty-products {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.nuora-cart-drawer__suggest-card {
-  display: flex;
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  background: var(--nc-white);
-  align-items: center;
-}
-
-.nuora-cart-drawer__suggest-card.is-yellow {
-  border-left: 3px solid var(--nc-yellow-400);
-}
-
-.nuora-cart-drawer__suggest-card.is-rose {
-  border-left: 3px solid var(--nc-rose-primary);
-}
-
-.nuora-cart-drawer__suggest-img {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  border: 1px solid var(--nc-border-solid);
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--nc-yellow-50);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-}
-
-.nuora-cart-drawer__suggest-img.is-rose {
-  background: var(--nc-rose-light);
-}
-
-.nuora-cart-drawer__suggest-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.nuora-cart-drawer__suggest-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.nuora-cart-drawer__suggest-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--nc-brown-950);
-  margin: 0 0 2px;
-}
-
-.nuora-cart-drawer__suggest-meta {
-  font-size: 11px;
-  color: var(--nc-brown-800);
-  margin: 0 0 4px;
-}
-
-.nuora-cart-drawer__suggest-stars {
-  font-size: 11px;
-  color: var(--nc-yellow-500);
-  margin: 0 0 8px;
-}
-
-.nuora-cart-drawer__suggest-price {
-  display: flex;
-  align-items: center;
   gap: 6px;
-  margin: 0 0 10px;
-}
-
-.nuora-cart-drawer__suggest-price-current {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--nc-brown-950);
-}
-
-.nuora-cart-drawer__suggest-price-compare {
+  padding-top: 12px;
   font-size: 12px;
+  font-weight: 500;
   color: var(--nc-brown-800);
-  text-decoration: line-through;
 }
 
-.nuora-cart-drawer__suggest-add {
-  font-family: var(--nc-font-body);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--nc-white);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background var(--nc-transition);
+.nuora-cart-drawer__guarantee svg {
+  flex-shrink: 0;
 }
 
-.nuora-cart-drawer__suggest-add.is-yellow {
-  background: var(--nc-yellow-600);
-}
-
-.nuora-cart-drawer__suggest-add.is-yellow:hover {
-  background: rgba(202, 133, 4, 0.8);
-}
-
-.nuora-cart-drawer__suggest-add.is-rose {
-  background: var(--nc-rose-primary);
-}
-
-.nuora-cart-drawer__suggest-add.is-rose:hover {
-  background: rgba(155, 8, 62, 0.85);
-}
-
-.nuora-cart-drawer__empty-browse {
-  display: block;
-  text-align: center;
-  margin-top: 16px;
+/* Design A: discount row in footer */
+.nuora-cart-drawer__discount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0 8px;
   font-size: 13px;
-  font-weight: 600;
+}
+
+.nuora-cart-drawer__discount-row span:first-child {
   color: var(--nc-brown-800);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
-.nuora-cart-drawer__empty-browse:hover {
-  color: var(--nc-brown-950);
+.nuora-cart-drawer__discount-row span:last-child {
+  color: var(--nc-positive);
+  font-weight: 600;
 }
 
-/* ==================== BODY SCROLL LOCK ==================== */
-body.nuora-cart-open {
-  overflow: hidden;
-}
-
-/* ==================== MOBILE ==================== */
+/* Design A mobile */
 @media (max-width: 480px) {
-  .nuora-cart-drawer {
-    width: 100%;
+  body[data-cart-design="a"] .nuora-cart-drawer__close {
+    right: 16px;
   }
-
-  .nuora-cart-drawer__bundle-card {
-    flex-direction: column;
-    align-items: flex-start;
+  .nuora-cart-drawer__delete-btn {
+    right: 16px;
   }
 }
