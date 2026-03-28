@@ -600,7 +600,7 @@ const NuoraCartDrawer = (() => {
       html += '</button>';
 
       html += '<div class="nuora-cart-drawer__guarantee">';
-      html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33L2.67 3.33v4a6.67 6.67 0 005.33 6.54 6.67 6.67 0 005.33-6.54v-4L8 1.33z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.5"/></svg>';
       html += '<span>30 Day Money Back Guarantee</span>';
       html += '</div>';
 
