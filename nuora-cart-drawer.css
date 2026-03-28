@@ -801,6 +801,22 @@ body[data-cart-design="a"] .nuora-cart-drawer__price-compare {
   color: #1a1a1a;
 }
 
+/* Design A: header title black */
+body[data-cart-design="a"] .nuora-cart-drawer__title,
+body[data-cart-design="a"] .nuora-cart-drawer__count {
+  color: #1a1a1a;
+}
+
+/* Design A: guarantee text + icon black */
+body[data-cart-design="a"] .nuora-cart-drawer__guarantee {
+  color: #1a1a1a;
+}
+
+/* Design A: discount label black */
+body[data-cart-design="a"] .nuora-cart-drawer__discount-row span:first-child {
+  color: #1a1a1a;
+}
+
 /* Design A line item - simplified layout */
 body[data-cart-design="a"] .nuora-cart-drawer__item {
   position: relative;
