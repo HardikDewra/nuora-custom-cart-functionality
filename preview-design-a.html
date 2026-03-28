@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design A Preview - UpCart-like</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="nuora-cart-drawer.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+      background: #f5f1eb;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    .preview-wrapper {
+      width: 420px;
+      max-width: 100%;
+      position: relative;
+    }
+    .preview-label {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #854A0E;
+      margin-bottom: 12px;
+    }
+    .preview-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .preview-toggle button {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 20px;
+      border: 1px solid #ece3d5;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .preview-toggle button.active {
+      background: #542C0D;
+      color: #fff;
+      border-color: #542C0D;
+    }
+    .preview-toggle button:not(.active) {
+      background: #fff;
+      color: #542C0D;
+    }
+    /* Make drawer static for preview */
+    .nuora-cart-drawer {
+      position: relative !important;
+      transform: none !important;
+      width: 100% !important;
+      height: auto !important;
+      border: 1px solid #ece3d5;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .nuora-cart-drawer__scrollable {
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    .nuora-cart-drawer__footer {
+      display: block !important;
+    }
+    .nuora-cart-overlay { display: none !important; }
+  </style>
+</head>
+<body data-cart-design="a">
+
+  <div class="preview-wrapper">
+    <div class="preview-label">Cart Drawer Preview</div>
+
+    <div class="preview-toggle">
+      <button class="active" onclick="switchDesign('a', this)">Design A (UpCart-like)</button>
+      <button onclick="switchDesign('b', this)">Design B (Full Custom)</button>
+    </div>
+
+    <div id="nuora-cart-drawer" class="nuora-cart-drawer" style="display:flex;">
+
+      <!-- Header -->
+      <div class="nuora-cart-drawer__header">
+        <h2 class="nuora-cart-drawer__title">
+          YOUR CART <span class="nuora-cart-drawer__count" id="drawerCartCount"></span>
+        </h2>
+        <button class="nuora-cart-drawer__close" type="button">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Urgency Timer -->
+      <div class="nuora-cart-drawer__urgency" id="drawerUrgency">
+        <span>During our <strong>Spring Sale</strong>, we can only reserve your cart for <strong id="drawerUrgencyTime">7:00</strong></span>
+      </div>
+
+      <!-- Shipping Bar (Design B only) -->
+      <div class="nuora-cart-drawer__shipping" id="drawerShipping">
+        <div class="nuora-cart-drawer__shipping-text" id="drawerShippingText">Upgrade to 2+ packs for FREE shipping!</div>
+        <div class="nuora-cart-drawer__shipping-track">
+          <div class="nuora-cart-drawer__shipping-fill" id="drawerShippingFill" style="width:50%;"></div>
+        </div>
+      </div>
+
+      <!-- Scrollable -->
+      <div class="nuora-cart-drawer__scrollable" id="drawerScrollable">
+        <div class="nuora-cart-drawer__items" id="drawerItems"></div>
+
+        <!-- Cross-sell (Design B only) -->
+        <div class="nuora-cart-drawer__cross-sell" id="drawerCrossSell" style="display:none;">
+          <h3 class="nuora-cart-drawer__section-title" id="crossSellTitle"></h3>
+          <div class="nuora-cart-drawer__cross-sell-card" id="drawerCrossSellCard"></div>
+        </div>
+
+        <!-- Bundle (Design B only) -->
+        <div class="nuora-cart-drawer__bundle" id="drawerBundle" style="display:none;">
+          <h3 class="nuora-cart-drawer__section-title">Upgrade & Save</h3>
+          <div class="nuora-cart-drawer__bundle-card" id="drawerBundleCard"></div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="nuora-cart-drawer__footer" id="drawerFooter"></div>
+
+    </div>
+  </div>
+
+<script>
+  const MOCK_ITEMS = [
+    {
+      name: 'Nuora Vaginal Probiotic',
+      variant: '1 Pack',
+      price: 3499,
+      compare: 5799,
+      saved: 2300,
+      plan: 'Every 30 Days',
+      savingsPct: 15,
+      units: 1,
+      img: '',
+      emoji: '\uD83C\uDF4D',
+      type: 'yellow',
+    },
+    {
+      name: 'Nuora\u2122 Gut Ritual',
+      variant: '3 Bottles',
+      price: 6900,
+      compare: 19500,
+      saved: 12600,
+      plan: 'Every 3 Months',
+      savingsPct: 65,
+      units: 3,
+      img: '',
+      emoji: '\uD83D\uDC8A',
+      type: 'rose',
+    },
+  ];
+
+  function fmt(cents) {
+    return '$' + (cents / 100).toFixed(2);
+  }
+
+  function getDesign() {
+    return document.body.dataset.cartDesign || 'a';
+  }
+
+  // ---- Design A renders ----
+  function renderLineItemA(item) {
+    var html = '<div class="nuora-cart-drawer__item">';
+    html += '<div class="nuora-cart-drawer__item-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;background:' + (item.type === 'rose' ? '#FDF0F4' : '#FEFBE8') + ';">' + item.emoji + '</div>';
+    html += '<div class="nuora-cart-drawer__item-details">';
+    html += '<p class="nuora-cart-drawer__item-name">' + item.name + '</p>';
+
+    html += '<div class="nuora-cart-drawer__price-row">';
+    if (item.compare > item.price) {
+      html += '<span class="nuora-cart-drawer__price-compare">' + fmt(item.compare) + '</span>';
+    }
+    html += '<span class="nuora-cart-drawer__price-current">' + fmt(item.price) + '</span>';
+    if (item.saved > 0) {
+      html += '<span class="nuora-cart-drawer__item-saved">(You saved ' + fmt(item.saved) + ')</span>';
+    }
+    html += '</div>';
+
+    if (item.units >= 2) {
+      html += '<span class="nuora-cart-drawer__discount-badge">' + item.units + ' ' + (item.type === 'rose' ? 'BOTTLES' : 'PACKS') + '</span>';
+    }
+
+    html += '</div>';
+    html += '<button class="nuora-cart-drawer__delete-btn" type="button"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M5.33 4V2.67a1.33 1.33 0 011.34-1.34h2.66a1.33 1.33 0 011.34 1.34V4m2 0v9.33a1.33 1.33 0 01-1.34 1.34H4.67a1.33 1.33 0 01-1.34-1.34V4h9.34z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderFooterA() {
+    var totalSavings = MOCK_ITEMS.reduce(function(s, i) { return s + i.saved; }, 0);
+    var total = MOCK_ITEMS.reduce(function(s, i) { return s + i.price; }, 0);
+    var html = '';
+    if (totalSavings > 0) {
+      html += '<div class="nuora-cart-drawer__discount-row"><span>Discounts</span><span>- ' + fmt(totalSavings) + '</span></div>';
+    }
+    html += '<button class="nuora-cart-drawer__checkout" type="button" style="margin-top:0;">SECURE CHECKOUT</button>';
+    html += '<div class="nuora-cart-drawer__guarantee"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.33L2.67 3.33v4a6.67 6.67 0 005.33 6.54 6.67 6.67 0 005.33-6.54v-4L8 1.33z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>30 Day Money Back Guarantee</span></div>';
+    return html;
+  }
+
+  // ---- Design B renders ----
+  function renderLineItemB(item) {
+    var html = '<div class="nuora-cart-drawer__item">';
+    html += '<div class="nuora-cart-drawer__item-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;background:' + (item.type === 'rose' ? '#FDF0F4' : '#FEFBE8') + ';">' + item.emoji + '</div>';
+    html += '<div class="nuora-cart-drawer__item-details">';
+    html += '<p class="nuora-cart-drawer__item-name">' + item.name + '</p>';
+    html += '<p class="nuora-cart-drawer__item-variant">Variant: ' + item.variant + '</p>';
+    if (item.plan) {
+      html += '<p class="nuora-cart-drawer__item-plan">' + item.plan + '</p>';
+    }
+    if (item.savingsPct > 0) {
+      html += '<p class="nuora-cart-drawer__item-savings">Saves ' + item.savingsPct + '% every order</p>';
+    }
+    html += '<div class="nuora-cart-drawer__item-bottom">';
+    html += '<div class="nuora-cart-drawer__item-actions">';
+    html += '<button class="nuora-cart-drawer__remove">Remove</button>';
+    html += '</div>';
+    html += '<div class="nuora-cart-drawer__item-price">';
+    html += '<div class="nuora-cart-drawer__price-current">' + fmt(item.price) + '</div>';
+    if (item.compare > item.price) {
+      html += '<div class="nuora-cart-drawer__price-compare">' + fmt(item.compare) + '</div>';
+    }
+    html += '</div></div></div></div>';
+    return html;
+  }
+
+  function renderFooterB() {
+    var total = MOCK_ITEMS.reduce(function(s, i) { return s + i.price; }, 0);
+    var totalSavings = MOCK_ITEMS.reduce(function(s, i) { return s + i.saved; }, 0);
+    var hasMultiPack = MOCK_ITEMS.some(function(i) { return i.units >= 2; });
+    var html = '';
+    html += '<div class="nuora-cart-drawer__summary-row"><span>Subtotal</span><span>' + fmt(total) + '</span></div>';
+    html += '<div class="nuora-cart-drawer__summary-row"><span>Shipping</span><span>' + (hasMultiPack ? 'FREE' : 'Calculated at checkout') + '</span></div>';
+    html += '<div class="nuora-cart-drawer__summary-row nuora-cart-drawer__summary-total"><span>Total</span><span>' + fmt(total) + '</span></div>';
+    if (totalSavings > 0) {
+      html += '<p class="nuora-cart-drawer__savings">You\'re saving ' + fmt(totalSavings) + ' on your wellness routine</p>';
+    }
+    html += '<button class="nuora-cart-drawer__checkout" type="button">CHECKOUT - ' + fmt(total) + '</button>';
+    html += '<div class="nuora-cart-drawer__trust"><span>&#x1F512; Secure checkout</span><span>30-day guarantee</span><span>Cancel anytime</span></div>';
+    return html;
+  }
+
+  // ---- Master render ----
+  function render() {
+    var design = getDesign();
+    var itemsEl = document.getElementById('drawerItems');
+    var footerEl = document.getElementById('drawerFooter');
+    var countEl = document.getElementById('drawerCartCount');
+    var shippingEl = document.getElementById('drawerShipping');
+    var crossSellEl = document.getElementById('drawerCrossSell');
+    var bundleEl = document.getElementById('drawerBundle');
+    var shippingTextEl = document.getElementById('drawerShippingText');
+    var shippingFillEl = document.getElementById('drawerShippingFill');
+
+    countEl.textContent = design === 'a' ? '- ' + MOCK_ITEMS.length : '(' + MOCK_ITEMS.length + ')';
+
+    if (design === 'a') {
+      itemsEl.innerHTML = MOCK_ITEMS.map(renderLineItemA).join('');
+      footerEl.innerHTML = renderFooterA();
+      // Hide B-only sections
+      if (crossSellEl) crossSellEl.style.display = 'none';
+      if (bundleEl) bundleEl.style.display = 'none';
+    } else {
+      itemsEl.innerHTML = MOCK_ITEMS.map(renderLineItemB).join('');
+      footerEl.innerHTML = renderFooterB();
+      // Show cross-sell
+      if (crossSellEl) {
+        crossSellEl.style.display = '';
+        var titleEl = document.getElementById('crossSellTitle');
+        if (titleEl) titleEl.textContent = 'Women Who Added Gummies Saw Better Results';
+        var cardEl = document.getElementById('drawerCrossSellCard');
+        if (cardEl) {
+          cardEl.innerHTML = '<div class="nuora-cart-drawer__cross-sell-img" style="display:flex;align-items:center;justify-content:center;font-size:20px;background:#FEFBE8;">&#x1F34D;</div><div class="nuora-cart-drawer__cross-sell-info"><p class="nuora-cart-drawer__cross-sell-name">Feminine Balance Gummies</p><p class="nuora-cart-drawer__cross-sell-price">$34.99 <span class="strike">$57.99</span></p></div><button class="nuora-cart-drawer__cross-sell-add">+ ADD</button>';
+        }
+      }
+      // Show bundle
+      if (bundleEl) {
+        bundleEl.style.display = '';
+        var bundleCardEl = document.getElementById('drawerBundleCard');
+        if (bundleCardEl) {
+          bundleCardEl.innerHTML = '<div><p class="nuora-cart-drawer__bundle-title">Switch to 3 Packs & Save 42%</p><p class="nuora-cart-drawer__bundle-sub">$58.99 vs $101.97 + FREE shipping</p></div><button class="nuora-cart-drawer__bundle-btn">Upgrade</button>';
+        }
+      }
+      // Shipping bar
+      if (shippingTextEl) {
+        var hasMulti = MOCK_ITEMS.some(function(i) { return i.units >= 2; });
+        shippingTextEl.textContent = hasMulti ? "You've unlocked FREE shipping!" : "Upgrade to 2+ packs for FREE shipping!";
+        shippingTextEl.classList.toggle('is-qualified', hasMulti);
+      }
+      if (shippingFillEl) {
+        var hasMulti2 = MOCK_ITEMS.some(function(i) { return i.units >= 2; });
+        shippingFillEl.style.width = hasMulti2 ? '100%' : '50%';
+        shippingFillEl.classList.toggle('is-qualified', hasMulti2);
+      }
+    }
+  }
+
+  // ---- Timer ----
+  var seconds = 7 * 60;
+  function tick() {
+    if (seconds <= 0) seconds = 7 * 60;
+    var mins = Math.floor(seconds / 60);
+    var secs = seconds % 60;
+    document.getElementById('drawerUrgencyTime').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+    seconds--;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ---- Toggle ----
+  function switchDesign(d, btn) {
+    document.body.dataset.cartDesign = d;
+    document.querySelectorAll('.preview-toggle button').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    render();
+  }
+
+  render();
+</script>
+</body>
+</html>

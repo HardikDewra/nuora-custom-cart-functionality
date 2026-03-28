@@ -516,11 +516,6 @@ const NuoraCartDrawer = (() => {
       html += planHtml;
       html += '<div class="nuora-cart-drawer__item-bottom">';
       html += '<div class="nuora-cart-drawer__item-actions">';
-      html += '<div class="nuora-cart-drawer__qty">';
-      html += '<button class="nuora-cart-drawer__qty-btn" data-action="decrease" data-key="' + item.key + '">-</button>';
-      html += '<span class="nuora-cart-drawer__qty-value">' + item.quantity + '</span>';
-      html += '<button class="nuora-cart-drawer__qty-btn" data-action="increase" data-key="' + item.key + '">+</button>';
-      html += '</div>';
       html += '<button class="nuora-cart-drawer__remove" data-action="remove" data-key="' + item.key + '">Remove</button>';
       html += '</div>';
       html += '<div class="nuora-cart-drawer__item-price">';
