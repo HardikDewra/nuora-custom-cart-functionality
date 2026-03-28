@@ -788,6 +788,19 @@ body[data-cart-design="a"] .nuora-cart-drawer__urgency {
   color: #1a1a1a;
 }
 
+/* Design A: product name, prices all black */
+body[data-cart-design="a"] .nuora-cart-drawer__item-name {
+  color: #1a1a1a;
+}
+
+body[data-cart-design="a"] .nuora-cart-drawer__price-current {
+  color: #1a1a1a;
+}
+
+body[data-cart-design="a"] .nuora-cart-drawer__price-compare {
+  color: #1a1a1a;
+}
+
 /* Design A line item - simplified layout */
 body[data-cart-design="a"] .nuora-cart-drawer__item {
   position: relative;
