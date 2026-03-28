@@ -783,6 +783,11 @@ body[data-cart-design="a"] .nuora-cart-drawer__close {
   transform: translateY(-50%);
 }
 
+/* Design A: urgency timer text black */
+body[data-cart-design="a"] .nuora-cart-drawer__urgency {
+  color: #1a1a1a;
+}
+
 /* Design A line item - simplified layout */
 body[data-cart-design="a"] .nuora-cart-drawer__item {
   position: relative;
